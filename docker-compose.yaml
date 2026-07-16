@@ -21,10 +21,10 @@ services:
     ports:
       - "3000:3000"
 
-  frontend:
+  web:
     build:
       context: .
-      dockerfile: apps/frontend/Dockerfile
+      dockerfile: apps/web/Dockerfile
     depends_on:
       - server
     ports:
