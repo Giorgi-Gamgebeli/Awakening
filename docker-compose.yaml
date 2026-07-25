@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: YN7144xT1RN6zpeGb1rh
-      POSTGRES_DB: fullstackapp
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
@@ -15,7 +15,7 @@ services:
       context: .
       dockerfile: apps/server/Dockerfile
     environment:
-      DATABASE_URL: postgresql://app:YN7144xT1RN6zpeGb1rh@postgres:5432/fullstackapp?schema=public
+      DATABASE_URL: ${POSTGRES_URL}
     depends_on:
       - postgres
     ports:
