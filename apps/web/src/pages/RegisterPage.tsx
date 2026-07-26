@@ -1,48 +1,51 @@
 import { motion } from "framer-motion";
+import { registerSchema } from "@repo/zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import type { z } from "@repo/zod";
 import { Button } from "../components/Button";
 import { FormRow } from "../components/FormRow";
 import { MessagePopup } from "../components/MessagePopup";
 import { Navigation } from "../components/Navigation";
-import SystemWindow from "../components/SystemWindow";
-
-type RegisterFormValues = {
-  confirmPassword: string;
-  displayName: string;
-  email: string;
-  password: string;
-  username: string;
-};
+import SystemWindow, {
+  type SystemWindowHandle,
+} from "../components/SystemWindow";
+import { useMutation } from "@tanstack/react-query";
+import { trpc } from "../lib/trpc";
+import { applyFieldErrors } from "../utils/helper";
 
 export function RegisterPage() {
-  const [authOpen, setAuthOpen] = useState(true);
   const [systemMessageOpen, setSystemMessageOpen] = useState(false);
-  const [targetPath, setTargetPath] = useState<string | null>(null);
+  const authDialogRef = useRef<SystemWindowHandle>(null);
   const navigate = useNavigate();
   const {
     formState: { errors },
-    getValues,
     handleSubmit,
     register,
-  } = useForm<RegisterFormValues>({
+    setError,
+  } = useForm<z.infer<typeof registerSchema>>({
     mode: "onBlur",
     reValidateMode: "onChange",
+    resolver: zodResolver(registerSchema),
   });
+  const registerMutation = useMutation(trpc.auth.register.mutationOptions());
 
-  const handleRegistered = () => {
-    setAuthOpen(false);
-  };
+  async function handleRegister(values: z.infer<typeof registerSchema>) {
+    const res = await registerMutation.mutateAsync(values);
 
-  const handleExitComplete = () => {
-    if (targetPath) {
-      navigate(targetPath);
-      return;
-    }
+    if (!res.ok && "fieldErrors" in res)
+      return applyFieldErrors(setError, res.fieldErrors);
 
+    await authDialogRef.current?.close();
     setSystemMessageOpen(true);
-  };
+  }
+
+  async function goToLogin() {
+    await authDialogRef.current?.close();
+    navigate("/login");
+  }
 
   return (
     <main className="relative grid min-h-svh min-w-80 place-items-center overflow-hidden bg-canvas bg-[radial-gradient(circle_at_50%_48%,--alpha(var(--color-system)/7%),transparent_34rem)] px-6 pt-28 pb-6 font-body text-content antialiased [color-scheme:dark] max-[480px]:px-4 max-[480px]:pt-[6.25rem] max-[480px]:pb-4">
@@ -61,124 +64,79 @@ export function RegisterPage() {
         />
       </div>
       <Navigation />
-      <SystemWindow
-        overlay={false}
-        open={authOpen && targetPath === null}
-        dismissible={false}
-        onExitComplete={handleExitComplete}
-      >
-        <SystemWindow.Panel>
-          <form
-            className="pt-7"
-            noValidate
-            onSubmit={handleSubmit(handleRegistered)}
-          >
-            <p className="m-0 text-sm leading-6 text-content-muted">
-              Create a profile to begin.
-            </p>
+      <SystemWindow ref={authDialogRef} open overlay={false}>
+        <form
+          className="pt-7"
+          noValidate
+          onSubmit={handleSubmit(handleRegister)}
+        >
+          <p className="m-0 text-sm leading-6 text-content-muted">
+            Create a profile to begin.
+          </p>
 
-            <div className="mt-7 grid gap-4">
-              <FormRow
-                error={errors.username?.message}
-                label="Username"
-                name="username"
-                register={register}
-                type="text"
-                autoComplete="username"
-                placeholder="Username"
-                rules={{
-                  minLength: {
-                    value: 3,
-                    message: "Username must have at least 3 characters.",
-                  },
-                  pattern: {
-                    value: /^[a-zA-Z0-9_]+$/,
-                    message: "Use letters, numbers, or underscores only.",
-                  },
-                  required: "Username is required.",
-                }}
-              />
-              <FormRow
-                error={errors.displayName?.message}
-                label="Display name"
-                name="displayName"
-                register={register}
-                type="text"
-                autoComplete="nickname"
-                placeholder="Name friends see"
-                rules={{
-                  minLength: {
-                    value: 2,
-                    message: "Display name must have at least 2 characters.",
-                  },
-                  required: "Display name is required.",
-                }}
-              />
-              <FormRow
-                error={errors.email?.message}
-                label="Email address"
-                name="email"
-                register={register}
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                rules={{
-                  pattern: {
-                    value: /^\S+@\S+\.\S+$/,
-                    message: "Enter a valid email address.",
-                  },
-                  required: "Email address is required.",
-                }}
-              />
-              <FormRow
-                error={errors.password?.message}
-                label="Password"
-                name="password"
-                register={register}
-                type="password"
-                autoComplete="new-password"
-                placeholder="Enter password"
-                rules={{
-                  minLength: {
-                    value: 8,
-                    message: "Password must have at least 8 characters.",
-                  },
-                  required: "Password is required.",
-                }}
-              />
-              <FormRow
-                error={errors.confirmPassword?.message}
-                label="Confirm password"
-                name="confirmPassword"
-                register={register}
-                type="password"
-                autoComplete="new-password"
-                placeholder="Repeat password"
-                rules={{
-                  required: "Confirm your password.",
-                  validate: (value) =>
-                    value === getValues("password") ||
-                    "Passwords do not match.",
-                }}
-              />
-            </div>
+          <div className="mt-7 grid gap-4">
+            <FormRow
+              error={errors.userName?.message}
+              label="Username"
+              name="userName"
+              register={register}
+              type="text"
+              autoComplete="username"
+              placeholder="Username"
+            />
+            <FormRow
+              error={errors.displayName?.message}
+              label="Display name"
+              name="displayName"
+              register={register}
+              type="text"
+              autoComplete="nickname"
+              placeholder="Name friends see"
+            />
+            <FormRow
+              error={errors.email?.message}
+              label="Email address"
+              name="email"
+              register={register}
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+            />
+            <FormRow
+              error={errors.password?.message}
+              label="Password"
+              name="password"
+              register={register}
+              type="password"
+              autoComplete="new-password"
+              placeholder="Enter password"
+            />
+            <FormRow
+              error={errors.confirmPassword?.message}
+              label="Confirm password"
+              name="confirmPassword"
+              register={register}
+              type="password"
+              autoComplete="new-password"
+              placeholder="Repeat password"
+            />
+          </div>
 
-            <div className="mt-7">
-              <Button type="submit">CREATE</Button>
-            </div>
+          <div className="mt-7">
+            <Button type="submit">CREATE</Button>
+          </div>
 
-            <p className="mt-6 mb-0 text-center font-mono text-[0.58rem] tracking-[0.09em] text-content-subtle uppercase">
-              Already registered?{" "}
-              <button
-                className="cursor-pointer border-0 bg-transparent p-0 font-inherit text-system hover:text-system-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
-                type="button"
-                onClick={() => setTargetPath("/login")}
-              >
-                Return to access
-              </button>
-            </p>
-          </form>
-        </SystemWindow.Panel>
+          <p className="mt-6 mb-0 text-center font-mono text-[0.58rem] tracking-[0.09em] text-content-subtle uppercase">
+            Already registered?{" "}
+            <button
+              className="cursor-pointer border-0 bg-transparent p-0 font-inherit text-system hover:text-system-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
+              type="button"
+              onClick={goToLogin}
+            >
+              Return to access
+            </button>
+          </p>
+        </form>
       </SystemWindow>
       <MessagePopup open={systemMessageOpen} />
     </main>

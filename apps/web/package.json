@@ -11,9 +11,9 @@
     "check-types": "tsc -b"
   },
   "dependencies": {
-    "@repo/zod": "^0.0.0",
+    "@hookform/resolvers": "^5.1.1",
     "@repo/server": "^0.0.1",
-    "@hookform/resolvers": "^4.1.3",
+    "@repo/zod": "^0.0.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.101.2",
     "@trpc/client": "^11.8.1",

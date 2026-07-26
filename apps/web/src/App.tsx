@@ -1,10 +1,12 @@
-import {
-  Navigate,
-  createBrowserRouter,
-} from "react-router";
+import { Navigate, createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import HomePage from "./pages/HomePage";
+import {
+  authOnlyMiddleware,
+  authPagesMiddleware,
+} from "./auth/clientMiddlewares";
 
 const router = createBrowserRouter([
   {
@@ -14,10 +16,17 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <LoginPage />,
+    middleware: [authPagesMiddleware],
   },
   {
     path: "/register",
     element: <RegisterPage />,
+    middleware: [authPagesMiddleware],
+  },
+  {
+    path: "/home",
+    element: <HomePage />,
+    middleware: [authOnlyMiddleware],
   },
   {
     path: "*",

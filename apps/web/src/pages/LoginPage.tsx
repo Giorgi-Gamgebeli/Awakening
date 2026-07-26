@@ -3,26 +3,29 @@ import { loginSchema } from "@repo/zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import type { z } from "@repo/zod";
 import { Button } from "../components/Button";
 import { FormRow } from "../components/FormRow";
 import { MessagePopup } from "../components/MessagePopup";
 import { Navigation } from "../components/Navigation";
-import SystemWindow from "../components/SystemWindow";
+import SystemWindow, {
+  type SystemWindowHandle,
+} from "../components/SystemWindow";
 import { trpc } from "../lib/trpc";
+import { applyFieldErrors } from "../utils/helper";
 
 export function LoginPage() {
-  const [authOpen, setAuthOpen] = useState(true);
   const [systemMessageOpen, setSystemMessageOpen] = useState(false);
-  const [targetPath, setTargetPath] = useState<string | null>(null);
+  const authDialogRef = useRef<SystemWindowHandle>(null);
   const navigate = useNavigate();
   const loginMutation = useMutation(trpc.auth.login.mutationOptions());
   const {
     formState: { errors },
     handleSubmit,
     register,
+    setError,
   } = useForm<z.infer<typeof loginSchema>>({
     mode: "onBlur",
     reValidateMode: "onChange",
@@ -30,18 +33,19 @@ export function LoginPage() {
   });
 
   async function handleAuthenticated(values: z.infer<typeof loginSchema>) {
-    await loginMutation.mutateAsync(values);
-    setAuthOpen(false);
+    const res = await loginMutation.mutateAsync(values);
+
+    if (!res.ok && "fieldErrors" in res)
+      return applyFieldErrors(setError, res.fieldErrors);
+
+    await authDialogRef.current?.close();
+    setSystemMessageOpen(true);
   }
 
-  const handleExitComplete = () => {
-    if (targetPath) {
-      navigate(targetPath);
-      return;
-    }
-
-    setSystemMessageOpen(true);
-  };
+  async function goToRegister() {
+    await authDialogRef.current?.close();
+    navigate("/register");
+  }
 
   return (
     <main className="relative grid min-h-svh min-w-80 place-items-center overflow-hidden bg-canvas bg-[radial-gradient(circle_at_50%_48%,--alpha(var(--color-system)/7%),transparent_34rem)] px-6 pt-28 pb-6 font-body text-content antialiased [color-scheme:dark] max-[480px]:px-4 max-[480px]:pt-[6.25rem] max-[480px]:pb-4">
@@ -60,59 +64,52 @@ export function LoginPage() {
         />
       </div>
       <Navigation />
-      <SystemWindow
-        overlay={false}
-        open={authOpen && targetPath === null}
-        dismissible={false}
-        onExitComplete={handleExitComplete}
-      >
-        <SystemWindow.Panel>
-          <form
-            className="pt-7"
-            noValidate
-            onSubmit={handleSubmit(handleAuthenticated)}
-          >
-            <p className="m-0 text-sm leading-6 text-content-muted">
-              Identify yourself.
-            </p>
+      <SystemWindow ref={authDialogRef} open overlay={false}>
+        <form
+          className="pt-7"
+          noValidate
+          onSubmit={handleSubmit(handleAuthenticated)}
+        >
+          <p className="m-0 text-sm leading-6 text-content-muted">
+            Identify yourself.
+          </p>
 
-            <div className="mt-7 grid gap-4">
-              <FormRow
-                error={errors.username?.message}
-                label="Username"
-                name="username"
-                register={register}
-                type="text"
-                autoComplete="username"
-                placeholder="Username"
-              />
-              <FormRow
-                error={errors.password?.message}
-                label="Password"
-                name="password"
-                register={register}
-                type="password"
-                autoComplete="current-password"
-                placeholder="Enter password"
-              />
-            </div>
+          <div className="mt-7 grid gap-4">
+            <FormRow
+              error={errors.email?.message}
+              label="Email address"
+              name="email"
+              register={register}
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+            />
+            <FormRow
+              error={errors.password?.message}
+              label="Password"
+              name="password"
+              register={register}
+              type="password"
+              autoComplete="current-password"
+              placeholder="Enter password"
+            />
+          </div>
 
-            <div className="mt-7">
-              <Button type="submit">ENTER</Button>
-            </div>
+          <div className="mt-7">
+            <Button type="submit">ENTER</Button>
+          </div>
 
-            <p className="mt-6 mb-0 text-center font-mono text-[0.58rem] tracking-[0.09em] text-content-subtle uppercase">
-              New to the system?{" "}
-              <button
-                className="cursor-pointer border-0 bg-transparent p-0 font-inherit text-system hover:text-system-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
-                type="button"
-                onClick={() => setTargetPath("/register")}
-              >
-                Create profile
-              </button>
-            </p>
-          </form>
-        </SystemWindow.Panel>
+          <p className="mt-6 mb-0 text-center font-mono text-[0.58rem] tracking-[0.09em] text-content-subtle uppercase">
+            New to the system?{" "}
+            <button
+              className="cursor-pointer border-0 bg-transparent p-0 font-inherit text-system hover:text-system-hover focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
+              type="button"
+              onClick={goToRegister}
+            >
+              Create profile
+            </button>
+          </p>
+        </form>
       </SystemWindow>
       <MessagePopup open={systemMessageOpen} />
     </main>

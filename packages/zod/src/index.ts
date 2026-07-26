@@ -1,2 +1,2 @@
 export { z } from "zod";
-export { loginSchema } from "./schemas/auth.js";
+export { loginSchema, registerSchema } from "./schemas/auth.js";
