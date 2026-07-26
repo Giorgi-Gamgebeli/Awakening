@@ -6,7 +6,7 @@ import HomePage from "./pages/HomePage";
 import {
   authOnlyMiddleware,
   authPagesMiddleware,
-} from "./auth/clientMiddlewares";
+} from "./lib/clientMiddlewares";
 
 const router = createBrowserRouter([
   {

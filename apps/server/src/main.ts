@@ -1,36 +1,20 @@
-// import { NestFactory } from '@nestjs/core';
-// import { AppModule } from './app.module';
-
-// async function bootstrap() {
-//   const app = await NestFactory.create(AppModule);
-//   await app.listen(process.env.PORT ?? 3000);
-// }
-// bootstrap();
-
 import { NestFactory } from '@nestjs/core';
-import * as trpcExpress from '@trpc/server/adapters/express';
+import { SuperTokensExceptionFilter } from 'supertokens-nestjs';
+import supertokens from 'supertokens-node';
 import { AppModule } from './app.module';
-import { AuthService } from './auth/auth.service';
-import { createContext } from './trpc/context';
-import { appRouter } from './trpc/router';
+import { env } from './env';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const authService = app.get(AuthService);
 
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:4200'],
+    origin: [env.VITE_WEB_BASE_URL],
+    allowedHeaders: ['content-type', ...supertokens.getAllCORSHeaders()],
+    credentials: true,
   });
+  app.useGlobalFilters(new SuperTokensExceptionFilter());
 
-  app.use(
-    '/trpc',
-    trpcExpress.createExpressMiddleware({
-      router: appRouter,
-      createContext: () => createContext(authService),
-    }),
-  );
-
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(env.SERVER_PORT);
 }
 
 bootstrap();

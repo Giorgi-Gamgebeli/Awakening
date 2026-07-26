@@ -1,22 +1,10 @@
-import {
-  AnimatePresence,
-  motion,
-  type Variants,
-  useReducedMotion,
-} from "framer-motion";
-import {
-  type Ref,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from "react";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
+import { type ReactNode, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   popupContentVariants,
   popupLowerScanVariants,
+  popupScreenGlitchVariants,
   popupShellVariants,
   popupUpperScanVariants,
 } from "../animations/popup";
@@ -39,41 +27,21 @@ const backdropVariants: Variants = {
   },
 };
 
-type SystemWindowProps = Readonly<{
-  children: ReactNode;
-  open: boolean;
+type SystemWindowProps<TScreen extends string> = Readonly<{
+  activeScreen: TScreen | null;
+  screens: Record<TScreen, ReactNode>;
   overlay?: boolean;
-  ref?: Ref<SystemWindowHandle>;
+  onExitComplete?: () => void;
 }>;
 
-export type SystemWindowHandle = Readonly<{
-  close: () => Promise<void>;
-}>;
-
-function SystemWindow({
-  children,
-  open,
+function SystemWindow<TScreen extends string>({
+  activeScreen,
+  screens,
   overlay = true,
-  ref: windowRef,
-}: SystemWindowProps) {
-  const [isOpen, setIsOpen] = useState(open);
-  const resolveCloseRef = useRef<(() => void) | null>(null);
-  const prefersReducedMotion = useReducedMotion() ?? false;
-
-  useEffect(() => {
-    setIsOpen(open);
-  }, [open]);
-
-  const close = useCallback(() => {
-    if (!isOpen) return Promise.resolve();
-
-    return new Promise<void>((resolve) => {
-      resolveCloseRef.current = resolve;
-      setIsOpen(false);
-    });
-  }, [isOpen]);
-
-  useImperativeHandle(windowRef, () => ({ close }), [close]);
+  onExitComplete,
+}: SystemWindowProps<TScreen>) {
+  const isOpen = activeScreen !== null;
+  const screenKeys = Object.keys(screens) as TScreen[];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -87,41 +55,35 @@ function SystemWindow({
   }, [isOpen]);
 
   return createPortal(
-    <AnimatePresence
-      onExitComplete={() => {
-        resolveCloseRef.current?.();
-        resolveCloseRef.current = null;
-      }}
-    >
+    <AnimatePresence onExitComplete={onExitComplete}>
       {isOpen ? (
         <motion.div
           className={`fixed inset-0 z-50 grid place-items-center overflow-y-auto px-6 py-24 max-[480px]:px-4 max-[480px]:py-20 ${
             overlay ? "bg-canvas/80 backdrop-blur-sm" : ""
           }`}
-          initial={prefersReducedMotion ? false : "hidden"}
+          initial="hidden"
           animate="visible"
-          exit={prefersReducedMotion ? undefined : "exit"}
+          exit="exit"
           variants={backdropVariants}
         >
-          <div
-            className="relative z-10 w-full"
-            role="dialog"
+          <dialog
+            className="relative z-10 m-0 w-full max-w-none border-0 bg-transparent p-0 text-inherit"
+            open
             aria-modal="true"
             aria-labelledby="system-message-title"
-            onMouseDown={(event) => event.stopPropagation()}
           >
             <motion.section
               className="relative mx-auto w-full max-w-136 overflow-hidden rounded bg-[linear-gradient(145deg,--alpha(var(--color-accent-bright)/58%),--alpha(var(--color-accent)/16%)_48%,--alpha(var(--color-accent-deep)/52%))] p-px shadow-[0_2rem_7rem_--alpha(var(--color-shadow)/58%),0_0_3rem_--alpha(var(--color-accent)/10%)]"
-              initial={prefersReducedMotion ? false : "hidden"}
+              initial="hidden"
               animate="visible"
-              exit={prefersReducedMotion ? undefined : "exit"}
+              exit="exit"
               variants={popupShellVariants}
             >
               <div className="rounded-[calc(0.25rem-1px)] bg-[linear-gradient(145deg,var(--color-surface-raised),var(--color-surface))] p-[clamp(1.5rem,5vw,2.5rem)]">
                 <motion.div
-                  initial={prefersReducedMotion ? false : "hidden"}
+                  initial="hidden"
                   animate="visible"
-                  exit={prefersReducedMotion ? undefined : "exit"}
+                  exit="exit"
                   variants={popupContentVariants}
                 >
                   <header className="flex items-center justify-between gap-4 border-b border-content-muted/[14%] pb-5">
@@ -130,7 +92,19 @@ function SystemWindow({
                       <span id="system-message-title">SYSTEM MESSAGE</span>
                     </div>
                   </header>
-                  {children}
+                  {screenKeys.map((screen) => (
+                    <motion.div
+                      key={screen}
+                      hidden={screen !== activeScreen}
+                      initial={
+                        screen === activeScreen ? "glitchInStart" : false
+                      }
+                      animate={screen === activeScreen ? "glitchIn" : "rest"}
+                      variants={popupScreenGlitchVariants}
+                    >
+                      {screens[screen]}
+                    </motion.div>
+                  ))}
                 </motion.div>
               </div>
               <motion.span
@@ -144,7 +118,7 @@ function SystemWindow({
                 aria-hidden="true"
               />
             </motion.section>
-          </div>
+          </dialog>
         </motion.div>
       ) : null}
     </AnimatePresence>,

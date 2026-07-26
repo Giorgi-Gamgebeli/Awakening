@@ -1,15 +1,28 @@
 import type { FieldPath, FieldValues, UseFormSetError } from "react-hook-form";
 
+type ApiFieldError = Readonly<{
+  id: string;
+  error: string;
+}>;
+
+function isFormField<TForm extends FieldValues>(
+  field: string,
+  fields: readonly FieldPath<TForm>[],
+): field is FieldPath<TForm> {
+  return fields.some((allowedField) => allowedField === field);
+}
+
 export function applyFieldErrors<TForm extends FieldValues>(
   setError: UseFormSetError<TForm>,
-  fieldErrors: Partial<Record<FieldPath<TForm>, string>>,
+  fieldErrors: readonly ApiFieldError[],
+  fields: readonly FieldPath<TForm>[],
 ) {
-  for (const [field, message] of Object.entries(fieldErrors) as [
-    FieldPath<TForm>,
-    string,
-  ][]) {
-    setError(field, {
-      message,
+  for (const { id, error } of fieldErrors) {
+    if (!isFormField(id, fields)) continue;
+
+    setError(id, {
+      type: "server",
+      message: error,
     });
   }
 }

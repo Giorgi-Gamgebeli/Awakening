@@ -1,5 +1,5 @@
-import { motion, useReducedMotion } from "framer-motion";
-import { createPerimeterVariants, surfaceVariants } from "../animations/button";
+import { motion } from "framer-motion";
+import { perimeterVariants, surfaceVariants } from "../animations/button";
 import { TargetLabel } from "./TargetLabel";
 
 type ButtonProps = Readonly<{
@@ -15,9 +15,6 @@ export function Button({
   onClick,
   type = "button",
 }: ButtonProps) {
-  const prefersReducedMotion = useReducedMotion() ?? false;
-  const perimeterVariants = createPerimeterVariants(prefersReducedMotion);
-
   return (
     <motion.button
       className="relative isolate mx-auto flex h-12 w-32 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-0 bg-system/38 px-6 font-display text-[0.72rem] font-extrabold tracking-[0.18em] text-on-system outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus disabled:cursor-default disabled:opacity-[0.82]"

@@ -4,22 +4,43 @@ services:
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_DB: ${VITE_APP_NAME}
     ports:
-      - "5432:5432"
+      - "${DB_PORT}:${DB_PORT}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  supertokens:
+    image: supertokens/supertokens-postgresql:latest
+    environment:
+      POSTGRESQL_CONNECTION_URI: ${POSTGRES_URL}
+      POSTGRESQL_TABLE_NAMES_PREFIX: supertokens
+      ACCESS_TOKEN_VALIDITY: ${ACCESS_TOKEN_VALIDITY}
+      REFRESH_TOKEN_VALIDITY: ${REFRESH_TOKEN_VALIDITY}
+    depends_on:
+      - postgres
+    ports:
+      - "${SUPERTOKENS_PORT}:${SUPERTOKENS_PORT}"
 
   server:
     build:
       context: .
       dockerfile: apps/server/Dockerfile
     environment:
-      DATABASE_URL: ${POSTGRES_URL}
+      DATABASE_URL: ${POSTGRES_URL}?schema=public
+      SUPERTOKENS_CONNECTION_URI: http://supertokens:${SUPERTOKENS_PORT}
+      SERVER_PORT: ${SERVER_PORT}
+      VITE_APP_NAME: ${VITE_APP_NAME}
+      VITE_SERVER_BASE_URL: ${VITE_SERVER_BASE_URL}
+      VITE_WEB_BASE_URL: ${VITE_WEB_BASE_URL}
+      VITE_AUTH_BASE_PATH: ${VITE_AUTH_BASE_PATH}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     depends_on:
       - postgres
+      - supertokens
     ports:
-      - "3000:3000"
+      - "${SERVER_PORT}:${SERVER_PORT}"
 
   web:
     build:
@@ -28,7 +49,7 @@ services:
     depends_on:
       - server
     ports:
-      - "4200:5173"
+      - "${WEB_PORT}:${WEB_PORT}"
 
 volumes:
   postgres_data:

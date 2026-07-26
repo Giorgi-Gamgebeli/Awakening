@@ -1,13 +1,11 @@
 import { redirect } from "react-router";
-import { useAuthStore } from "./store";
+import Session from "supertokens-auth-react/recipe/session";
 
 export async function authOnlyMiddleware(
   { request }: { request: Request },
   next: () => Promise<unknown>,
 ) {
-  const { isAuthenticated } = useAuthStore.getState();
-
-  if (!isAuthenticated) {
+  if (!(await Session.doesSessionExist())) {
     const url = new URL(request.url);
 
     throw redirect(`/login?redirectTo=${url.pathname}`);
@@ -20,9 +18,7 @@ export async function authPagesMiddleware(
   _args: { request: Request },
   next: () => Promise<unknown>,
 ) {
-  const { isAuthenticated } = useAuthStore.getState();
-
-  if (isAuthenticated) throw redirect(`/home`);
+  if (await Session.doesSessionExist()) throw redirect(`/home`);
 
   return next();
 }
