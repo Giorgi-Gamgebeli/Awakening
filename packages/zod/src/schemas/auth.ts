@@ -18,13 +18,14 @@ export const registerSchema = z
       .string()
       .trim()
       .min(1, "Username is required.")
-      .min(3, "Username must have at least 3 characters.")
+      .min(10, "Username must have at least 10 characters.")
+      .max(32, "Username must be 32 characters or fewer.")
       .regex(/^\w+$/, "Use letters, numbers, or underscores only."),
     displayName: z
       .string()
       .trim()
       .min(1, "Display name is required.")
-      .min(2, "Display name must have at least 2 characters."),
+      .max(32, "Display name must be 32 characters or fewer."),
     email: z
       .string()
       .trim()

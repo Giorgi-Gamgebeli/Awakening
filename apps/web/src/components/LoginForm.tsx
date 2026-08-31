@@ -1,10 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type z } from "@repo/zod";
 import { useForm } from "react-hook-form";
-import EmailPassword from "supertokens-auth-react/recipe/emailpassword";
 import { Button } from "./Button";
 import { FormRow } from "./FormRow";
-import { applyFieldErrors } from "../utils/helper";
+import { authClient } from "../lib/authClient";
 
 type LoginFormProps = Readonly<{
   onAuthenticated: () => void;
@@ -28,36 +27,17 @@ export default function LoginForm({
 
   async function handleAuthenticated(values: z.infer<typeof loginSchema>) {
     try {
-      const response = await EmailPassword.signIn({
-        formFields: [
-          { id: "email", value: values.email },
-          { id: "password", value: values.password },
-        ],
+      const { error } = await authClient.signIn.email({
+        email: values.email,
+        password: values.password,
       });
 
-      if (response.status === "WRONG_CREDENTIALS_ERROR") {
-        const message = "Email or password is incorrect.";
-
+      if (error) {
+        const message = error.message || "Email or password is incorrect.";
         setError("email", { type: "server", message });
         setError("password", { type: "server", message });
         return;
       }
-
-      if (response.status === "FIELD_ERROR") {
-        applyFieldErrors(setError, response.formFields, ["email", "password"]);
-        return;
-      }
-
-      if (response.status === "SIGN_IN_NOT_ALLOWED") {
-        applyFieldErrors(
-          setError,
-          [{ id: "email", error: response.reason }],
-          ["email"],
-        );
-        return;
-      }
-
-      if (response.status !== "OK") throw new Error("Something went wrong!");
 
       onAuthenticated();
     } catch (error) {

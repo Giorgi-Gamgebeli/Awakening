@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ORPCModule } from '@orpc/nest';
-import { SuperTokensModule } from 'supertokens-nestjs';
+import { AuthModule } from '@thallesp/nestjs-better-auth';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { superTokensConfig } from './supertokens.config';
+import { auth } from './auth/auth';
 
 @Module({
-  imports: [ORPCModule.forRoot({}), SuperTokensModule.forRoot(superTokensConfig)],
+  imports: [
+    ORPCModule.forRoot({}),
+    AuthModule.forRoot({ auth, disableGlobalAuthGuard: true }),
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

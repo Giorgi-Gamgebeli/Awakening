@@ -1,7 +1,4 @@
-/*
-  SuperTokens Core owns authentication credentials and sessions in its own
-  `supertokens_`-prefixed tables. These were Better Auth's obsolete tables.
-*/
+/* Legacy schema cleanup retained for migration history. */
 
 ALTER TABLE "User"
 DROP COLUMN "email_verified",

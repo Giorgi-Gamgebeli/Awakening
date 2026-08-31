@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router";
-import Session from "supertokens-auth-react/recipe/session";
 import { Button } from "../components/Button";
+import { authClient } from "../lib/authClient";
 
 export default function HomePage() {
   const navigate = useNavigate();
 
   async function signOut() {
-    await Session.signOut();
+    await authClient.signOut();
     navigate("/login", { replace: true });
   }
 

@@ -22,6 +22,7 @@
     "check-types": "tsc --noEmit -p tsconfig.build.json"
   },
   "dependencies": {
+    "@better-auth/prisma-adapter": "^1.6.26",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -29,13 +30,13 @@
     "@nestjs/throttler": "^6.5.0",
     "@orpc/nest": "^1.14.10",
     "@repo/zod": "^0.0.0",
+    "@thallesp/nestjs-better-auth": "^2.7.0",
+    "better-auth": "^1.6.26",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "dotenv": "^16.6.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1",
-    "supertokens-nestjs": "^1.0.1",
-    "supertokens-node": "^24.0.3"
+    "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",

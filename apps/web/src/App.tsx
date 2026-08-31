@@ -8,6 +8,12 @@ import {
   authPagesMiddleware,
 } from "./lib/clientMiddlewares";
 
+const authHydrateFallback = (
+  <main className="grid min-h-svh place-items-center bg-canvas font-body text-sm text-content-muted">
+    Loading…
+  </main>
+);
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -17,16 +23,19 @@ const router = createBrowserRouter([
     path: "/login",
     element: <LoginPage />,
     middleware: [authPagesMiddleware],
+    hydrateFallbackElement: authHydrateFallback,
   },
   {
     path: "/register",
     element: <RegisterPage />,
     middleware: [authPagesMiddleware],
+    hydrateFallbackElement: authHydrateFallback,
   },
   {
     path: "/home",
     element: <HomePage />,
     middleware: [authOnlyMiddleware],
+    hydrateFallbackElement: authHydrateFallback,
   },
   {
     path: "*",

@@ -12,11 +12,11 @@ const optionalSecret = z.preprocess(
 const environmentSchema = z
   .object({
     SERVER_PORT: z.coerce.number().int().positive().default(3000),
-    SUPERTOKENS_CONNECTION_URI: z.url(),
+    BETTER_AUTH_URL: z.url(),
+    BETTER_AUTH_SECRET: z.string().trim().min(32),
     VITE_APP_NAME: z.string().trim().min(1),
     VITE_SERVER_BASE_URL: z.url(),
     VITE_WEB_BASE_URL: z.url(),
-    VITE_AUTH_BASE_PATH: z.string().startsWith('/'),
     GOOGLE_CLIENT_ID: optionalSecret,
     GOOGLE_CLIENT_SECRET: optionalSecret,
   })
