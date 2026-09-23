@@ -46,38 +46,10 @@ export function ConversationPanel({
         }`}
         aria-label="Conversations"
       >
-        <div className="home-panel-toolbar border-b border-border-subtle px-4 pt-4 pb-4 sm:px-5 sm:pt-5">
-          <div className="flex min-h-11 items-center justify-between gap-3">
-            <p
-              className="font-display text-lg font-extrabold tracking-wide text-content"
-              translate="no"
-            >
-              Awakening
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                className={`grid size-11 place-items-center rounded-xl text-content-subtle transition-colors hover:bg-surface-raised hover:text-content ${focusRing}`}
-                aria-label="Create conversation"
-              >
-                <FilePlus2 size={18} aria-hidden="true" />
-              </button>
-              {mobileOpen ? (
-                <button
-                  ref={closeButtonRef}
-                  type="button"
-                  onClick={onClose}
-                  className={`grid size-11 place-items-center rounded-xl text-content-subtle transition-colors hover:bg-surface-raised hover:text-content md:hidden ${focusRing}`}
-                  aria-label="Close conversations"
-                >
-                  <X size={19} aria-hidden="true" />
-                </button>
-              ) : null}
-            </div>
-          </div>
+        <div className="home-panel-toolbar h-21.25 border-b border-border-subtle px-4 pt-4 pb-4 sm:px-5 sm:pt-5">
           <button
             type="button"
-            className={`home-control-surface mt-4 flex min-h-11 w-full items-center gap-2 rounded-xl border border-border-strong px-3 py-2 text-left text-sm text-content-muted transition-colors hover:border-system hover:bg-surface-raised hover:text-content ${focusRing}`}
+            className={`home-control-surface flex min-h-11 w-full items-center gap-2 rounded-xl border border-border-strong px-3 py-2 text-left text-sm text-content-muted transition-colors hover:border-system hover:bg-surface-raised hover:text-content ${focusRing}`}
           >
             <Search size={16} aria-hidden="true" />
             Search messages

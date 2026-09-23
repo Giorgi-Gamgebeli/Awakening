@@ -1,5 +1,6 @@
-import { Navigate, createBrowserRouter } from "react-router";
+import { Navigate, Outlet, createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
+import { SocketProvider } from "./context/SocketContext";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
@@ -13,6 +14,14 @@ const authHydrateFallback = (
     Loading…
   </main>
 );
+
+function AuthenticatedAppLayout() {
+  return (
+    <SocketProvider>
+      <Outlet />
+    </SocketProvider>
+  );
+}
 
 const router = createBrowserRouter([
   {
@@ -33,21 +42,23 @@ const router = createBrowserRouter([
   },
   {
     path: "/home",
-    element: <Navigate to="/home/friends" replace />,
+    element: <AuthenticatedAppLayout />,
     middleware: [authOnlyMiddleware],
     hydrateFallbackElement: authHydrateFallback,
-  },
-  {
-    path: "/home/friends",
-    element: <HomePage />,
-    middleware: [authOnlyMiddleware],
-    hydrateFallbackElement: authHydrateFallback,
-  },
-  {
-    path: "/home/:friendId",
-    element: <HomePage />,
-    middleware: [authOnlyMiddleware],
-    hydrateFallbackElement: authHydrateFallback,
+    children: [
+      {
+        index: true,
+        element: <Navigate to="friends" replace />,
+      },
+      {
+        path: "friends",
+        element: <HomePage />,
+      },
+      {
+        path: ":friendId",
+        element: <HomePage />,
+      },
+    ],
   },
   {
     path: "*",
