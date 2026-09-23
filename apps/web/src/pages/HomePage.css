@@ -1,0 +1,132 @@
+.home-shell {
+  /*
+   * Each structural column owns one exclusive background. Components use a
+   * separate material ramp so controls never disappear into the layout.
+   */
+  --home-layout-underlay: #05060b;
+  --home-layout-rail: #070810;
+  --home-layout-sidebar: #0b0d17;
+  --home-layout-canvas: #121522;
+  --home-material-well: #10121d;
+  --home-material-header: #171a28;
+  --home-material-surface: #191d2c;
+  --home-material-message: #1c2132;
+  --home-material-control: #23283d;
+  --home-material-selected: #222e4a;
+  --home-material-raised: #2a3048;
+  --home-material-border-subtle: #2c3147;
+  --home-material-border: #363d57;
+  --home-material-boundary: #68718f;
+  --home-content-subtle: #9fa9c1;
+  --home-content-muted: #c9cede;
+  --home-content-primary: #f5f7ff;
+  --home-system-600: #249ed8;
+  --home-system-500: #56c9ff;
+  --home-system-400: #8cdbff;
+  --home-system-100: #d9f3ff;
+  --home-energy-700: #7453d6;
+  --home-energy-500: #a47bff;
+  --home-energy-300: #c3adff;
+
+  --color-primary: var(--home-material-well);
+  --color-secondary: var(--home-material-surface);
+  --color-surface: var(--home-material-surface);
+  --color-surface-raised: var(--home-material-raised);
+  --color-border: var(--home-material-border);
+  --color-border-subtle: var(--home-material-border-subtle);
+  --color-border-strong: var(--home-material-boundary);
+  --color-content: var(--home-content-primary);
+  --color-content-muted: var(--home-content-muted);
+  --color-content-subtle: var(--home-content-subtle);
+  --color-system: var(--home-system-500);
+  --color-system-hover: var(--home-system-400);
+  --color-system-soft: var(--home-system-100);
+  --color-on-system: #060713;
+  --color-focus: var(--home-system-400);
+  --color-accent: var(--home-energy-500);
+  --color-accent-bright: var(--home-energy-300);
+  --color-accent-deep: var(--home-energy-700);
+  --color-brand-500: var(--home-system-500);
+  --color-brand-600: var(--home-system-600);
+  --color-shadow: #03040a;
+
+  background-color: var(--home-layout-underlay);
+  color: var(--color-content);
+  color-scheme: dark;
+  -webkit-tap-highlight-color: color-mix(
+    in srgb,
+    var(--color-system) 18%,
+    transparent
+  );
+}
+
+.home-signal-rail {
+  background-color: var(--home-layout-rail);
+}
+
+.home-conversation-panel {
+  background-color: var(--home-layout-sidebar);
+}
+
+.home-main {
+  background-color: var(--home-layout-canvas);
+}
+
+.home-panel-toolbar {
+  background-color: var(--home-material-well);
+}
+
+.home-utility-header {
+  background-color: var(--home-material-header);
+}
+
+.home-control-surface {
+  background-color: var(--home-material-control);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+}
+
+.home-selected-surface {
+  background-color: var(--home-material-selected);
+}
+
+.home-message-surface {
+  background-color: var(--home-material-message);
+}
+
+.home-filter-well {
+  background-color: var(--home-material-well);
+}
+
+.home-shell button,
+.home-shell a {
+  touch-action: manipulation;
+}
+
+.home-top-bar {
+  padding-top: env(safe-area-inset-top);
+}
+
+.home-mobile-drawer {
+  overscroll-behavior: contain;
+}
+
+.home-composer {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-shell *,
+  .home-shell *::before,
+  .home-shell *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .home-shell :focus-visible {
+    outline-color: Highlight;
+  }
+}

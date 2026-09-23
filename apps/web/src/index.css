@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  --color-ink-1100: #010207;
   --color-ink-1000: #020308;
   --color-ink-950: #04070d;
   --color-ink-900: #080d17;
@@ -8,6 +9,7 @@
   --color-ink-800: #111b2b;
   --color-ink-700: #1b2a3f;
   --color-ink-600: #2a3b52;
+  --color-ink-500: #53677f;
   --color-ink-400: #63748a;
   --color-ink-300: #8d9aae;
   --color-ink-200: #b9c3d0;
@@ -21,10 +23,6 @@
   --color-cyan-300: #75e8ff;
   --color-cyan-100: #d9f9ff;
 
-  --color-violet-600: #5b46d6;
-  --color-violet-500: #765cff;
-  --color-violet-400: #9b8aff;
-
   --color-green-400: #43e6a1;
   --color-amber-400: #ffc857;
   --color-red-400: #ff5d79;
@@ -33,20 +31,32 @@
   --color-surface: var(--color-ink-900);
   --color-surface-raised: var(--color-ink-850);
   --color-content: var(--color-white);
-  --color-content-muted: var(--color-ink-300);
-  --color-content-subtle: var(--color-ink-400);
+  --color-content-muted: var(--color-ink-200);
+  --color-content-subtle: var(--color-ink-300);
   --color-on-system: var(--color-ink-1000);
   --color-system: var(--color-cyan-400);
   --color-system-hover: var(--color-cyan-300);
   --color-system-soft: var(--color-cyan-100);
   --color-focus: var(--color-cyan-300);
-  --color-accent: var(--color-violet-500);
-  --color-accent-bright: var(--color-violet-400);
-  --color-accent-deep: var(--color-violet-600);
-  --color-shadow: #000000;
+  --color-accent: var(--color-cyan-500);
+  --color-accent-bright: var(--color-cyan-300);
+  --color-accent-deep: var(--color-cyan-700);
+  --color-shadow: var(--color-ink-1100);
+
+  /* PixelSync home shell tokens. */
+  --color-primary: #0f1117;
+  --color-secondary: #1a1b23;
+  --color-sidebar: #16171e;
+  --color-border: #2a2b35;
+  --color-border-subtle: var(--color-border);
+  --color-border-strong: var(--color-ink-500);
+  --color-brand-500: oklch(0.715 0.143 215.221);
+  --color-brand-600: oklch(0.609 0.126 221.723);
+  --color-panel: #0c1320;
 
   --font-display: "Arial Narrow", "Roboto Condensed", "Inter Tight", sans-serif;
-  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+  --font-body:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }

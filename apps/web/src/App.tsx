@@ -33,6 +33,18 @@ const router = createBrowserRouter([
   },
   {
     path: "/home",
+    element: <Navigate to="/home/friends" replace />,
+    middleware: [authOnlyMiddleware],
+    hydrateFallbackElement: authHydrateFallback,
+  },
+  {
+    path: "/home/friends",
+    element: <HomePage />,
+    middleware: [authOnlyMiddleware],
+    hydrateFallbackElement: authHydrateFallback,
+  },
+  {
+    path: "/home/:friendId",
     element: <HomePage />,
     middleware: [authOnlyMiddleware],
     hydrateFallbackElement: authHydrateFallback,
