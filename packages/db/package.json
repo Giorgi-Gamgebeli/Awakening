@@ -2,6 +2,8 @@
   "name": "@repo/db",
   "private": true,
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc --watch -p tsconfig.build.json",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "studio": "prisma studio",
@@ -9,7 +11,10 @@
     "check-types": "tsc --noEmit"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

@@ -1,5 +1,5 @@
-import { Bell, Settings2, UsersRound } from "lucide-react";
-import { Link } from "react-router";
+import { Bell, Bot, UsersRound } from "lucide-react";
+import { Link, NavLink } from "react-router";
 import { focusRing } from "./constants";
 
 export function SignalRail() {
@@ -19,13 +19,32 @@ export function SignalRail() {
       </Link>
       <span className="my-5 h-px w-8 bg-border" aria-hidden="true" />
       <div className="grid gap-2">
-        <Link
+        <NavLink
+          to="/home/ai"
+          className={({ isActive }) =>
+            `grid size-11 place-items-center rounded-xl transition-colors active:scale-[0.98] ${focusRing} ${
+              isActive
+                ? "bg-accent/18 text-accent-bright"
+                : "text-content-subtle hover:bg-surface-raised hover:text-content"
+            }`
+          }
+          aria-label="AI workspace"
+        >
+          <Bot size={19} aria-hidden="true" />
+        </NavLink>
+        <NavLink
           to="/home/friends"
-          className={`grid size-11 place-items-center rounded-xl bg-system/14 text-system transition-colors hover:bg-system/22 active:scale-[0.98] ${focusRing}`}
+          className={({ isActive }) =>
+            `grid size-11 place-items-center rounded-xl transition-colors active:scale-[0.98] ${focusRing} ${
+              isActive
+                ? "bg-system/14 text-system"
+                : "text-content-subtle hover:bg-surface-raised hover:text-content"
+            }`
+          }
           aria-label="Friends"
         >
           <UsersRound size={19} aria-hidden="true" />
-        </Link>
+        </NavLink>
         <button
           type="button"
           className={`grid size-11 place-items-center rounded-xl text-content-subtle transition-colors hover:bg-surface-raised hover:text-content active:scale-[0.98] ${focusRing}`}
@@ -33,22 +52,15 @@ export function SignalRail() {
         >
           <Bell size={18} aria-hidden="true" />
         </button>
-        <button
-          type="button"
-          className={`grid size-11 place-items-center rounded-xl text-content-subtle transition-colors hover:bg-surface-raised hover:text-content active:scale-[0.98] ${focusRing}`}
-          aria-label="Settings"
-        >
-          <Settings2 size={18} aria-hidden="true" />
-        </button>
       </div>
       <div className="mt-auto">
-        <button
-          type="button"
+        <Link
+          to="/home/settings"
           className={`grid size-11 place-items-center rounded-xl bg-accent/16 font-mono text-xs font-bold text-accent-bright transition-colors hover:bg-accent/24 ${focusRing}`}
-          aria-label="Open profile"
+          aria-label="Open profile settings"
         >
           R
-        </button>
+        </Link>
       </div>
     </aside>
   );
