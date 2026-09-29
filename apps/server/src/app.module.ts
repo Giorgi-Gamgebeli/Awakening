@@ -8,6 +8,8 @@ import { DirectChatModule } from './direct-chat/direct-chat.module';
 import { SocketModule } from './socket/socket.module';
 import { PresenceModule } from './presence/presence.module';
 import { UsersModule } from './users/users.module';
+import { ApiKeysModule } from './api-keys/api-keys.module';
+import { CryptoModule } from './crypto/crypto.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { UsersModule } from './users/users.module';
     SocketModule,
     PresenceModule,
     UsersModule,
+    ApiKeysModule,
+    CryptoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

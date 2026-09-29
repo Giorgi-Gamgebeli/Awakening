@@ -4,6 +4,8 @@ import { SocketProvider } from "./context/SocketContext";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
+import { AiPage } from "./pages/AiPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import {
   authOnlyMiddleware,
   authPagesMiddleware,
@@ -53,6 +55,14 @@ const router = createBrowserRouter([
       {
         path: "friends",
         element: <HomePage />,
+      },
+      {
+        path: "ai",
+        element: <AiPage />,
+      },
+      {
+        path: "settings",
+        element: <SettingsPage />,
       },
       {
         path: ":friendId",
