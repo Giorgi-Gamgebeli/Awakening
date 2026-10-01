@@ -1,12 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TriangleAlert } from "lucide-react";
+import { ApiKeysCreateInputSchema } from "@repo/zod";
+import type { z } from "@repo/zod";
 import { SignalRail, UtilityHeader } from "../components/home";
 import { ApiKeySection } from "../components/settings/ApiKeySection";
-import { loadApiKeys, saveApiKeys, type ApiKeyStore } from "../lib/apiKeys";
+import { orpc } from "../lib/orpc";
 import "./HomePage.css";
 
 export function SettingsPage() {
-  const [stores, setStores] = useState<ApiKeyStore>(() => loadApiKeys());
+  const queryClient = useQueryClient();
+  const apiKeysQuery = useQuery(orpc.apiKeys.findMany.queryOptions());
+  const createApiKeyMutation = useMutation({
+    ...orpc.apiKeys.create.mutationOptions(),
+    onSuccess(createdKey) {
+      queryClient.setQueryData(
+        orpc.apiKeys.findMany.queryKey(),
+        (current = []) => [...current, createdKey],
+      );
+    },
+  });
 
   useEffect(() => {
     document.title = "Settings | Awakening";
@@ -31,9 +44,17 @@ export function SettingsPage() {
     };
   }, []);
 
-  useEffect(() => {
-    saveApiKeys(stores);
-  }, [stores]);
+  async function createApiKey(
+    input: z.infer<typeof ApiKeysCreateInputSchema>,
+  ) {
+    await createApiKeyMutation.mutateAsync(input);
+  }
+
+  const apiKeys = apiKeysQuery.data ?? [];
+  const agentKeys = apiKeys.filter((apiKey) => apiKey.purpose === "AGENT");
+  const translationKeys = apiKeys.filter(
+    (apiKey) => apiKey.purpose === "TRANSLATION",
+  );
 
   return (
     <div className="home-shell flex min-h-[100dvh] font-body text-content antialiased">
@@ -57,28 +78,38 @@ export function SettingsPage() {
 
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-6 sm:px-7">
               <div className="mx-auto grid w-full max-w-3xl gap-4">
+                {apiKeysQuery.isError ? (
+                  <p className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+                    Could not load saved API keys.
+                  </p>
+                ) : null}
                 <p className="flex items-start gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-xs leading-5 text-content-muted">
-                  <TriangleAlert size={15} aria-hidden="true" className="mt-0.5 shrink-0 text-system" />
-                  Keys are stored only in this browser (localStorage) for now. The app tries priority 1 first and falls back down the list.
+                  <TriangleAlert
+                    size={15}
+                    aria-hidden="true"
+                    className="mt-0.5 shrink-0 text-system"
+                  />
+                  Keys are encrypted and saved on the server. Their original
+                  values are never returned to this browser.
                 </p>
 
                 <ApiKeySection
-                  title="Work keys"
+                  title="Agent keys"
                   description="Do the actual work in the app and connect to your MCP server. First key is primary, the rest are fallbacks."
-                  items={stores.work}
-                  onChange={(work) => setStores((prev) => ({ ...prev, work }))}
-                  providerPlaceholder="Provider label, e.g. OpenAI work"
-                  keyPlaceholder="Paste work API key"
-                  listLabel="work-keys"
+                  items={agentKeys}
+                  purpose="AGENT"
+                  onSave={createApiKey}
+                  providerPlaceholder="Provider label, e.g. OpenAI agent"
+                  keyPlaceholder="Paste agent API key"
+                  listLabel="agent-keys"
                 />
 
                 <ApiKeySection
                   title="Translation keys"
                   description="Handle translations when the work provider can't fully translate a language. E.g. Gemini translates, OpenAI does the work."
-                  items={stores.translation}
-                  onChange={(translation) =>
-                    setStores((prev) => ({ ...prev, translation }))
-                  }
+                  items={translationKeys}
+                  purpose="TRANSLATION"
+                  onSave={createApiKey}
                   providerPlaceholder="Provider label, e.g. Gemini translate"
                   keyPlaceholder="Paste translation API key"
                   listLabel="translation-keys"

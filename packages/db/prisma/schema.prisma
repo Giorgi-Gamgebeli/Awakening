@@ -98,6 +98,11 @@ enum ChannelType {
   VOICE
 }
 
+enum UserApiKeysPurpose {
+  AGENT 
+  TRANSLATION
+}
+
 model Session {
   id        String   @id @unique @default(uuid())
   token     String   @unique
@@ -149,9 +154,10 @@ model UserApiKeys {
   id       Int    @id @unique @default(autoincrement())
   provider String
   key      String
+  purpose  UserApiKeysPurpose @default(AGENT)
   userId   String
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, purpose])
 }

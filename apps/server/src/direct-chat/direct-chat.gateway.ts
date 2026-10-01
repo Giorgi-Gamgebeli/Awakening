@@ -2,8 +2,14 @@ import { WebSocketGateway, SubscribeMessage, MessageBody } from '@nestjs/websock
 import { DirectChatService } from './direct-chat.service';
 import { CreateDirectChatDto } from './dto/create-direct-chat.dto';
 import { UpdateDirectChatDto } from './dto/update-direct-chat.dto';
+import { env } from '../env';
 
-@WebSocketGateway()
+@WebSocketGateway({
+  cors: {
+    origin: env.VITE_WEB_BASE_URL,
+    credentials: true,
+  },
+})
 export class DirectChatGateway {
   constructor(private readonly directChatService: DirectChatService) {}
 
