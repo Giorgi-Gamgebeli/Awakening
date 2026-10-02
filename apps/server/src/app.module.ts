@@ -10,6 +10,7 @@ import { PresenceModule } from './presence/presence.module';
 import { UsersModule } from './users/users.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { CryptoModule } from './crypto/crypto.module';
+import { AgentModule } from './agent/agent.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { CryptoModule } from './crypto/crypto.module';
     UsersModule,
     ApiKeysModule,
     CryptoModule,
+    AgentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

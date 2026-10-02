@@ -10,30 +10,30 @@ import { ApiKeysService } from './api-keys.service';
 export class ApiKeysController {
   constructor(private readonly apiKeysService: ApiKeysService) {}
 
-  @Implement(apiKeysContract.apiKeys.create)
+  @Implement(apiKeysContract.create)
   create(@Session() session: UserSession) {
-    return implement(apiKeysContract.apiKeys.create).handler(({ input }) =>
+    return implement(apiKeysContract.create).handler(({ input }) =>
       this.apiKeysService.create(input, session.user.id),
     );
   }
 
-  @Implement(apiKeysContract.apiKeys.findMany)
+  @Implement(apiKeysContract.findMany)
   findMany(@Session() session: UserSession) {
-    return implement(apiKeysContract.apiKeys.findMany).handler(() =>
+    return implement(apiKeysContract.findMany).handler(() =>
       this.apiKeysService.findMany(session.user.id),
     );
   }
 
-  @Implement(apiKeysContract.apiKeys.patch)
+  @Implement(apiKeysContract.patch)
   patch(@Session() session: UserSession) {
-    return implement(apiKeysContract.apiKeys.patch).handler(({ input }) =>
+    return implement(apiKeysContract.patch).handler(({ input }) =>
       this.apiKeysService.patch(input, session.user.id),
     );
   }
 
-  @Implement(apiKeysContract.apiKeys.delete)
+  @Implement(apiKeysContract.delete)
   delete(@Session() session: UserSession) {
-    return implement(apiKeysContract.apiKeys.delete).handler(({ input }) =>
+    return implement(apiKeysContract.delete).handler(({ input }) =>
       this.apiKeysService.delete(input, session.user.id),
     );
   }

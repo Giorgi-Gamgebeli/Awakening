@@ -17,7 +17,7 @@ export const ApiKeysCreateOutputSchema = z.object({
 
 export const ApiKeysPatchInputSchema = z
   .object({
-    id: z.number().int().positive(),
+    id: z.coerce.number().int().positive(),
     provider: z.string().trim().min(1).optional(),
     purpose: ApiKeysPurposeSchema.optional(),
   })
@@ -27,7 +27,7 @@ export const ApiKeysPatchInputSchema = z
   );
 
 export const ApiKeysDeleteSchema = z.object({
-  id: z.number().int().positive(),
+  id: z.coerce.number().int().positive(),
 });
 
 export const ApiKeysFindManyOutputSchema = z.array(ApiKeysCreateOutputSchema);
@@ -35,21 +35,19 @@ export const ApiKeysFindManyOutputSchema = z.array(ApiKeysCreateOutputSchema);
 export const ApiKeysPatchOutputSchema = ApiKeysCreateOutputSchema;
 
 export const apiKeysContract = {
-  apiKeys: {
-    create: oc
-      .route({ method: "POST", path: "/api-keys" })
-      .input(ApiKeysCreateInputSchema)
-      .output(ApiKeysCreateOutputSchema),
-    findMany: oc
-      .route({ method: "GET", path: "/api-keys" })
-      .output(ApiKeysFindManyOutputSchema),
-    patch: oc
-      .route({ method: "PATCH", path: "/api-keys/{id}" })
-      .input(ApiKeysPatchInputSchema)
-      .output(ApiKeysPatchOutputSchema),
-    delete: oc
-      .route({ method: "DELETE", path: "/api-keys/{id}" })
-      .input(ApiKeysDeleteSchema)
-      .output(ApiKeysDeleteSchema),
-  },
+  create: oc
+    .route({ method: "POST", path: "/api-keys" })
+    .input(ApiKeysCreateInputSchema)
+    .output(ApiKeysCreateOutputSchema),
+  findMany: oc
+    .route({ method: "GET", path: "/api-keys" })
+    .output(ApiKeysFindManyOutputSchema),
+  patch: oc
+    .route({ method: "PATCH", path: "/api-keys/{id}" })
+    .input(ApiKeysPatchInputSchema)
+    .output(ApiKeysPatchOutputSchema),
+  delete: oc
+    .route({ method: "DELETE", path: "/api-keys/{id}" })
+    .input(ApiKeysDeleteSchema)
+    .output(ApiKeysDeleteSchema),
 };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
@@ -16,6 +16,7 @@ type ApiKeySectionProps = Readonly<{
   purpose: z.infer<typeof ApiKeysPurposeSchema>;
   items: z.infer<typeof ApiKeysFindManyOutputSchema>;
   onSave: (input: z.infer<typeof ApiKeysCreateInputSchema>) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
   providerPlaceholder: string;
   keyPlaceholder: string;
   listLabel: string;
@@ -25,9 +26,13 @@ function KeyRow(
   {
     entry,
     index,
+    isDeleting,
+    onDelete,
   }: Readonly<{
     entry: z.infer<typeof ApiKeysFindManyOutputSchema>[number];
     index: number;
+    isDeleting: boolean;
+    onDelete: () => Promise<void>;
   }>,
 ) {
   return (
@@ -43,6 +48,15 @@ function KeyRow(
           Saved securely on the server
         </span>
       </span>
+      <button
+        type="button"
+        onClick={() => void onDelete()}
+        disabled={isDeleting}
+        className={`grid size-9 shrink-0 place-items-center rounded-lg text-content-subtle transition-colors hover:bg-danger/10 hover:text-danger disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+        aria-label={`Delete ${entry.provider} API key`}
+      >
+        <Trash2 size={16} aria-hidden="true" />
+      </button>
     </li>
   );
 }
@@ -53,11 +67,14 @@ export function ApiKeySection({
   purpose,
   items,
   onSave,
+  onDelete,
   providerPlaceholder,
   keyPlaceholder,
   listLabel,
 }: ApiKeySectionProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const {
     handleSubmit,
     register,
@@ -76,6 +93,19 @@ export function ApiKeySection({
       reset({ provider: "", key: "", purpose });
     } catch {
       setSaveError("Could not save this key. Please try again.");
+    }
+  }
+
+  async function handleDelete(id: number) {
+    setDeleteError(null);
+    setDeletingId(id);
+
+    try {
+      await onDelete(id);
+    } catch {
+      setDeleteError("Could not delete this key. Please try again.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -146,7 +176,13 @@ export function ApiKeySection({
       {items.length ? (
         <ul className="mt-4 grid gap-2">
           {items.map((entry, index) => (
-            <KeyRow key={entry.id} entry={entry} index={index} />
+            <KeyRow
+              key={entry.id}
+              entry={entry}
+              index={index}
+              isDeleting={deletingId === entry.id}
+              onDelete={() => handleDelete(entry.id)}
+            />
           ))}
         </ul>
       ) : (
@@ -157,6 +193,11 @@ export function ApiKeySection({
       {items.length ? (
         <p className="mt-3 text-xs leading-5 text-content-subtle">
           Saved keys cannot be revealed in the browser.
+        </p>
+      ) : null}
+      {deleteError ? (
+        <p role="alert" className="mt-3 text-sm text-red-300">
+          {deleteError}
         </p>
       ) : null}
     </section>

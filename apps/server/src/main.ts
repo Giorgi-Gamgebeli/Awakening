@@ -9,7 +9,7 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   app.enableCors({
-    origin: [env.VITE_WEB_BASE_URL],
+    origin: env.VITE_WEB_BASE_URL,
     credentials: true,
   });
 
