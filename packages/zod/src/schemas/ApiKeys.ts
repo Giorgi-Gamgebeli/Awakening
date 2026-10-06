@@ -2,15 +2,18 @@ import { oc } from "@orpc/contract";
 import { z } from "zod";
 
 export const ApiKeysPurposeSchema = z.enum(["AGENT", "TRANSLATION"]);
+export const ApiKeysProviderSchema = z.enum(["GEMINI", "OPENAI", "ANTHROPIC"]);
 
 export const ApiKeysCreateInputSchema = z.object({
   key: z.string().min(1),
-  provider: z.string().trim().min(1),
+  provider: ApiKeysProviderSchema,
   purpose: ApiKeysPurposeSchema,
 });
 
 export const ApiKeysCreateOutputSchema = z.object({
   id: z.number().int().positive(),
+  // The database previously allowed custom labels, so persisted legacy keys can
+  // still be listed. New and updated keys are restricted by the input schema.
   provider: z.string(),
   purpose: ApiKeysPurposeSchema,
 });
@@ -18,7 +21,7 @@ export const ApiKeysCreateOutputSchema = z.object({
 export const ApiKeysPatchInputSchema = z
   .object({
     id: z.coerce.number().int().positive(),
-    provider: z.string().trim().min(1).optional(),
+    provider: ApiKeysProviderSchema.optional(),
     purpose: ApiKeysPurposeSchema.optional(),
   })
   .refine(

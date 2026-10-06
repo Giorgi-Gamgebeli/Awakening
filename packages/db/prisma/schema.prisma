@@ -99,7 +99,7 @@ enum ChannelType {
 }
 
 enum UserApiKeysPurpose {
-  AGENT 
+  AGENT
   TRANSLATION
 }
 
@@ -151,11 +151,13 @@ model Verification {
 }
 
 model UserApiKeys {
-  id       Int    @id @unique @default(autoincrement())
-  provider String
-  key      String
-  purpose  UserApiKeysPurpose @default(AGENT)
-  userId   String
+  id              Int                @id @unique @default(autoincrement())
+  provider        String
+  key             String
+  purpose         UserApiKeysPurpose @default(AGENT)
+  userId          String
+  availableModels Json?
+  modelsUpdatedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

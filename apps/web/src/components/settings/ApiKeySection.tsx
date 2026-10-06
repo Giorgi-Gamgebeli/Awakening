@@ -17,24 +17,21 @@ type ApiKeySectionProps = Readonly<{
   items: z.infer<typeof ApiKeysFindManyOutputSchema>;
   onSave: (input: z.infer<typeof ApiKeysCreateInputSchema>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
-  providerPlaceholder: string;
   keyPlaceholder: string;
   listLabel: string;
 }>;
 
-function KeyRow(
-  {
-    entry,
-    index,
-    isDeleting,
-    onDelete,
-  }: Readonly<{
-    entry: z.infer<typeof ApiKeysFindManyOutputSchema>[number];
-    index: number;
-    isDeleting: boolean;
-    onDelete: () => Promise<void>;
-  }>,
-) {
+function KeyRow({
+  entry,
+  index,
+  isDeleting,
+  onDelete,
+}: Readonly<{
+  entry: z.infer<typeof ApiKeysFindManyOutputSchema>[number];
+  index: number;
+  isDeleting: boolean;
+  onDelete: () => Promise<void>;
+}>) {
   return (
     <li className="flex items-center gap-2 rounded-xl border border-border-subtle bg-canvas/45 px-3 py-2.5">
       <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-system/14 font-mono text-xs font-bold text-system">
@@ -68,7 +65,6 @@ export function ApiKeySection({
   items,
   onSave,
   onDelete,
-  providerPlaceholder,
   keyPlaceholder,
   listLabel,
 }: ApiKeySectionProps) {
@@ -82,7 +78,7 @@ export function ApiKeySection({
     formState: { errors, isSubmitting },
   } = useForm<z.input<typeof ApiKeysCreateInputSchema>>({
     resolver: zodResolver(ApiKeysCreateInputSchema),
-    defaultValues: { provider: "", key: "", purpose },
+    defaultValues: { provider: "GEMINI", key: "", purpose },
   });
 
   async function handleAdd(input: z.infer<typeof ApiKeysCreateInputSchema>) {
@@ -90,7 +86,7 @@ export function ApiKeySection({
 
     try {
       await onSave(input);
-      reset({ provider: "", key: "", purpose });
+      reset({ provider: "GEMINI", key: "", purpose });
     } catch {
       setSaveError("Could not save this key. Please try again.");
     }
@@ -127,15 +123,17 @@ export function ApiKeySection({
         className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
       >
         <label className="sr-only" htmlFor={`${listLabel}-provider`}>
-          Provider label
+          Provider
         </label>
-        <input
+        <select
           id={`${listLabel}-provider`}
           {...register("provider")}
-          placeholder={providerPlaceholder}
-          autoComplete="off"
           className={`min-h-11 rounded-xl border border-border bg-surface-raised px-3 py-2 text-sm text-content placeholder:text-content-subtle ${focusRing}`}
-        />
+        >
+          <option value="GEMINI">Gemini</option>
+          <option value="OPENAI">OpenAI</option>
+          <option value="ANTHROPIC">Claude</option>
+        </select>
         {errors.provider ? (
           <p className="text-sm text-red-300 sm:col-span-3">
             {errors.provider.message}

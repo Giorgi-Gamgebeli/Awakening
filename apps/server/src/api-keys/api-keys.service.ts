@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ORPCError } from '@orpc/server';
-import { db } from '@repo/db';
+import { db, Prisma } from '@repo/db';
 import {
   ApiKeysPatchInputSchema,
+  ApiKeysPatchOutputSchema,
   ApiKeysCreateInputSchema,
   ApiKeysDeleteSchema,
   z,
@@ -54,7 +55,7 @@ export class ApiKeysService {
   async patch(
     { purpose, provider, id }: z.infer<typeof ApiKeysPatchInputSchema>,
     userId: string,
-  ) {
+  ): Promise<z.infer<typeof ApiKeysPatchOutputSchema>> {
     const [updatedKey] = await db.userApiKeys.updateManyAndReturn({
       where: {
         id,
@@ -63,6 +64,8 @@ export class ApiKeysService {
       data: {
         purpose,
         provider,
+        availableModels: provider === undefined ? undefined : Prisma.DbNull,
+        modelsUpdatedAt: provider === undefined ? undefined : null,
       },
       select: {
         id: true,
@@ -80,10 +83,7 @@ export class ApiKeysService {
     return updatedKey;
   }
 
-  async delete(
-    { id }: z.infer<typeof ApiKeysDeleteSchema>,
-    userId: string,
-  ) {
+  async delete({ id }: z.infer<typeof ApiKeysDeleteSchema>, userId: string) {
     const result = await db.userApiKeys.deleteMany({
       where: {
         id,

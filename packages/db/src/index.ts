@@ -18,4 +18,5 @@ export const db = globalForPrisma.prisma || new PrismaClient({ adapter });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 
+export { Prisma } from "../generated/prisma/client/index.js";
 export type * from "../generated/prisma/client";

@@ -10,21 +10,23 @@ import "./HomePage.css";
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
-  const apiKeysQuery = useQuery(orpc.findMany.queryOptions());
+  const apiKeysQuery = useQuery(orpc.apiKeys.findMany.queryOptions());
   const createApiKeyMutation = useMutation({
-    ...orpc.create.mutationOptions(),
+    ...orpc.apiKeys.create.mutationOptions(),
     onSuccess(createdKey) {
-      queryClient.setQueryData(orpc.findMany.queryKey(), (current = []) => [
-        ...current,
-        createdKey,
-      ]);
+      queryClient.setQueryData(
+        orpc.apiKeys.findMany.queryKey(),
+        (current = []) => [...current, createdKey],
+      );
     },
   });
   const deleteApiKeyMutation = useMutation({
-    ...orpc.delete.mutationOptions(),
+    ...orpc.apiKeys.delete.mutationOptions(),
     onSuccess(deletedKey) {
-      queryClient.setQueryData(orpc.findMany.queryKey(), (current = []) =>
-        current.filter((apiKey) => apiKey.id !== deletedKey.id),
+      queryClient.setQueryData(
+        orpc.apiKeys.findMany.queryKey(),
+        (current = []) =>
+          current.filter((apiKey) => apiKey.id !== deletedKey.id),
       );
     },
   });
@@ -110,7 +112,6 @@ export function SettingsPage() {
                   purpose="AGENT"
                   onSave={createApiKey}
                   onDelete={deleteApiKey}
-                  providerPlaceholder="Provider label, e.g. OpenAI agent"
                   keyPlaceholder="Paste agent API key"
                   listLabel="agent-keys"
                 />
@@ -122,7 +123,6 @@ export function SettingsPage() {
                   purpose="TRANSLATION"
                   onSave={createApiKey}
                   onDelete={deleteApiKey}
-                  providerPlaceholder="Provider label, e.g. Gemini translate"
                   keyPlaceholder="Paste translation API key"
                   listLabel="translation-keys"
                 />

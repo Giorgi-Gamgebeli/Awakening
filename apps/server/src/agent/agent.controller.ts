@@ -53,4 +53,11 @@ export class AgentController {
       this.agentService.chat(input, session.user.id),
     );
   }
+
+  @Implement(agentContract.models)
+  models(@Session() session: UserSession) {
+    return implement(agentContract.models).handler(({ input }) =>
+      this.agentService.models(input, session.user.id),
+    );
+  }
 }
