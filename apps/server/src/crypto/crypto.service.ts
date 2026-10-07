@@ -35,25 +35,21 @@ export class CryptoService {
     const [ivText, authTagText, encryptedDataText] = data.split('.');
 
     if (!ivText || !authTagText || !encryptedDataText)
-      throw new Error('Invalid ecrypted value.');
+      throw new Error('Invalid encrypted value.');
 
     const iv = Buffer.from(ivText, 'base64');
     const authTag = Buffer.from(authTagText, 'base64');
     const encryptedData = Buffer.from(encryptedDataText, 'base64');
 
-    try {
-      const decipher = createDecipheriv('aes-256-gcm', this.masterKey, iv);
+    const decipher = createDecipheriv('aes-256-gcm', this.masterKey, iv);
 
-      decipher.setAuthTag(authTag);
+    decipher.setAuthTag(authTag);
 
-      const plaintext = Buffer.concat([
-        decipher.update(encryptedData),
-        decipher.final(),
-      ]);
+    const plaintext = Buffer.concat([
+      decipher.update(encryptedData),
+      decipher.final(),
+    ]);
 
-      return plaintext.toString('utf8');
-    } catch (error) {
-      throw new Error('Could not decrypt value.');
-    }
+    return plaintext.toString('utf8');
   }
 }

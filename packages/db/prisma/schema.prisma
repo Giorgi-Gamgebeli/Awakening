@@ -93,11 +93,6 @@ enum UserStatus {
   OFFLINE
 }
 
-enum ChannelType {
-  TEXT
-  VOICE
-}
-
 enum UserApiKeysPurpose {
   AGENT
   TRANSLATION

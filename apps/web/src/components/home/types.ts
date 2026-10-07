@@ -1,7 +1,6 @@
 import type { RefObject } from "react";
 
 export type Status = "ONLINE" | "IDLE" | "OFFLINE";
-export type Filter = "online" | "all" | "pending";
 
 export type Friend = Readonly<{
   id: string;

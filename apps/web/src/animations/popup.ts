@@ -85,28 +85,6 @@ export const popupScreenGlitchVariants: Variants = {
     clipPath: "inset(38% 0% 10% 0%)",
     filter: "brightness(1.9) blur(0.5px)",
   },
-  glitchOut: {
-    opacity: [1, 0.72, 0.94, 0.78],
-    x: [0, -8, 6, -4],
-    skewX: [0, -1.4, 0.9, -0.6],
-    clipPath: [
-      "inset(0% 0% 0% 0%)",
-      "inset(9% 0% 47% 0%)",
-      "inset(44% 0% 12% 0%)",
-      "inset(18% 0% 34% 0%)",
-    ],
-    filter: [
-      "brightness(1) blur(0px)",
-      "brightness(2.2) blur(0.6px)",
-      "brightness(0.7) blur(0px)",
-      "brightness(1.8) blur(0.4px)",
-    ],
-    transition: {
-      duration: 0.16,
-      times: [0, 0.3, 0.62, 1],
-      ease: "linear",
-    },
-  },
   glitchIn: {
     opacity: [0.8, 0.96, 0.74, 1],
     x: [5, -6, 3, 0],

@@ -40,8 +40,10 @@ export default function LoginForm({
       }
 
       onAuthenticated();
-    } catch (error) {
-      console.log(error);
+    } catch {
+      const message = "Unable to reach the server. Try again.";
+      setError("email", { type: "server", message });
+      setError("password", { type: "server", message });
     }
   }
 

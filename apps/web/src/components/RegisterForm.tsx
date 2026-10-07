@@ -43,8 +43,11 @@ export default function RegisterForm({
       }
 
       onRegistered();
-    } catch (error) {
-      console.log(error);
+    } catch {
+      setError("email", {
+        type: "server",
+        message: "Unable to reach the server. Try again.",
+      });
     }
   }
 
