@@ -19,6 +19,7 @@ const environmentSchema = z
     VITE_WEB_BASE_URL: z.url(),
     GOOGLE_CLIENT_ID: optionalSecret,
     GOOGLE_CLIENT_SECRET: optionalSecret,
+    MASTER_ENCRYPTION_KEY: z.string(),
   })
   .refine(
     ({ GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET }) =>

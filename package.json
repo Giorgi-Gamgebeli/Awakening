@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "docker compose up -d postgres && turbo run dev",
+    "dev": "docker compose up -d postgres && npm run build --workspace=@repo/db && turbo run dev --filter=!mobile",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
@@ -20,7 +20,8 @@
   "devEngines": {
     "packageManager": {
       "name": "npm",
-      "version": "11.6.2"
+      "version": "11.6.2",
+      "onFail": "warn"
     }
   },
   "workspaces": [

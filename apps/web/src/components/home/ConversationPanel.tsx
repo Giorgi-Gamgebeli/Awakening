@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { NavLink } from "react-router";
+import { Link, NavLink } from "react-router";
 import {
   Apple,
   NotebookPen,
@@ -81,13 +81,20 @@ export function ConversationPanel({
             <NotebookPen size={18} aria-hidden="true" />
             Notes
           </button>
-          <button
-            type="button"
-            className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-content-muted transition-colors hover:bg-surface-raised hover:text-content active:scale-[0.99] ${focusRing}`}
+          <NavLink
+            to="/home/ai"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors active:scale-[0.99] ${focusRing} ${
+                isActive
+                  ? "home-selected-surface text-content shadow-[inset_3px_0_0_var(--color-system)]"
+                  : "text-content-muted hover:bg-surface-raised hover:text-content"
+              }`
+            }
           >
             <Bot size={18} aria-hidden="true" />
             System
-          </button>
+          </NavLink>
           <NavLink
             to="/home/friends"
             end
@@ -145,8 +152,9 @@ export function ConversationPanel({
         </section>
 
         <div className="mt-auto border-t border-border-subtle p-3">
-          <button
-            type="button"
+          <Link
+            to="/home/settings"
+            onClick={onClose}
             className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-content-muted transition-colors hover:bg-surface-raised hover:text-content active:scale-[0.99] ${focusRing}`}
             aria-label="Open profile"
           >
@@ -161,7 +169,7 @@ export function ConversationPanel({
                 Account settings
               </span>
             </span>
-          </button>
+          </Link>
         </div>
       </aside>
 

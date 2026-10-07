@@ -5,6 +5,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
 import PlannerPage from "./pages/PlannerPage";
+import { AiPage } from "./pages/AiPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import {
   authOnlyMiddleware,
   authPagesMiddleware,
@@ -58,6 +60,14 @@ const router = createBrowserRouter([
       {
         path: "planner",
         element: <PlannerPage />,
+      },
+      {
+        path: "ai",
+        element: <AiPage />,
+      },
+      {
+        path: "settings",
+        element: <SettingsPage />,
       },
       {
         path: ":friendId",

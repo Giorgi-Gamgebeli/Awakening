@@ -8,28 +8,28 @@ datasource db {
   provider = "postgresql"
 }
 
-
 model User {
-  id            String           @id @unique @default(uuid())
-  email         String           @unique
-  emailVerified Boolean          @default(false)
-  image         String?
-  userName      String           @unique @db.VarChar(32)
-  displayName   String           @db.VarChar(32)
-  status        UserStatus       @default(OFFLINE)
-  lastSeen      DateTime         @default(now())
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  receivedMessages DirectMessage[]  @relation("ReceivedDirectMessages")
-  sentMessages     DirectMessage[]  @relation("SentDirectMessages")
+  id               String          @id @unique @default(uuid())
+  email            String          @unique
+  emailVerified    Boolean         @default(false)
+  image            String?
+  userName         String          @unique @db.VarChar(32)
+  displayName      String          @db.VarChar(32)
+  status           UserStatus      @default(OFFLINE)
+  lastSeen         DateTime        @default(now())
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  receivedMessages DirectMessage[] @relation("ReceivedDirectMessages")
+  sentMessages     DirectMessage[] @relation("SentDirectMessages")
   settings         UserSettings?
-  friends          User[]           @relation("UserFriends")
-  friendOf         User[]           @relation("UserFriends")
-  ownedGroupChats  GroupChat[]       @relation("GroupChatOwner")
-  groupChats       GroupChat[]       @relation("GroupChatMembers")
+  friends          User[]          @relation("UserFriends")
+  friendOf         User[]          @relation("UserFriends")
+  ownedGroupChats  GroupChat[]     @relation("GroupChatOwner")
+  groupChats       GroupChat[]     @relation("GroupChatMembers")
   groupMessages    GroupMessage[]
   sessions         Session[]
   accounts         Account[]
+  userApiKeys      UserApiKeys[]
 }
 
 model UserSettings {
@@ -71,15 +71,15 @@ model GroupChat {
 }
 
 model GroupMessage {
-  id        String   @id @unique
+  id        String    @id @unique
   content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isEdited  Boolean  @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  isEdited  Boolean   @default(false)
   groupId   Int
   senderId  String
   group     GroupChat @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  sender    User     @relation(fields: [senderId], references: [id])
+  sender    User      @relation(fields: [senderId], references: [id])
 
   @@index([groupId])
   @@index([senderId])
@@ -96,6 +96,11 @@ enum UserStatus {
 enum ChannelType {
   TEXT
   VOICE
+}
+
+enum UserApiKeysPurpose {
+  AGENT
+  TRANSLATION
 }
 
 model Session {
@@ -130,8 +135,8 @@ model Account {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
   @@unique([providerId, accountId])
+  @@index([userId])
 }
 
 model Verification {
@@ -145,4 +150,16 @@ model Verification {
   @@index([identifier])
 }
 
+model UserApiKeys {
+  id              Int                @id @unique @default(autoincrement())
+  provider        String
+  key             String
+  purpose         UserApiKeysPurpose @default(AGENT)
+  userId          String
+  availableModels Json?
+  modelsUpdatedAt DateTime?
 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+}
