@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { io, type Socket } from "socket.io-client";
+import { env } from "../env";
 import { authClient } from "../lib/authClient";
 
 export type UserStatus = "ONLINE" | "OFFLINE" | "IDLE" | "DO_NOT_DISTURB";
@@ -44,7 +45,7 @@ export function SocketProvider({ children }: Readonly<PropsWithChildren>) {
   useEffect(() => {
     if (!session?.user.id) return;
 
-    const nextSocket: AppSocket = io(import.meta.env.VITE_SERVER_BASE_URL, {
+    const nextSocket: AppSocket = io(env.VITE_SERVER_BASE_URL, {
       autoConnect: false,
       withCredentials: true,
     });

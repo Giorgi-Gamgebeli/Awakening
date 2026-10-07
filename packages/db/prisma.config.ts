@@ -8,9 +8,15 @@ dotenvExpand.expand(
   dotenv.config({ path: path.join(__dirname, "../../.env") }),
 );
 
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is required");
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: process.env.DATABASE_URL,
+    url: databaseUrl,
   },
 });

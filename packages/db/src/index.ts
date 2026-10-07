@@ -8,10 +8,16 @@ dotenvExpand.expand(
   dotenv.config({ path: path.join(process.cwd(), "../../.env") }),
 );
 
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is required");
+}
+
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
+  connectionString,
 });
 
 export const db = globalForPrisma.prisma || new PrismaClient({ adapter });
