@@ -8,9 +8,9 @@ type AvatarProps = Readonly<{
 export function Avatar({ friend, size = "size-10" }: AvatarProps) {
   const indicator =
     friend.status === "ONLINE"
-      ? "bg-green-400"
+      ? "home-presence-online"
       : friend.status === "IDLE"
-        ? "bg-amber-400"
+        ? "home-presence-away"
         : "bg-content-subtle";
 
   return (

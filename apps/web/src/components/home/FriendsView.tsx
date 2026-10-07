@@ -17,11 +17,7 @@ export function FriendsView(mobileNavigation: MobileNavigationProps) {
 
   return (
     <>
-      <UtilityHeader
-        title="Friends"
-        subtitle="Keep up with the people you know"
-        {...mobileNavigation}
-      >
+      <UtilityHeader title="Friends" {...mobileNavigation}>
         <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
           <fieldset className="home-filter-well flex min-h-11 rounded-xl border border-border-subtle p-1">
             <legend className="sr-only">Filter friends</legend>

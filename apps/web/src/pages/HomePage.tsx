@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import {
-  SignalRail,
   ConversationPanel,
   FriendsView,
   ChatView,
@@ -41,7 +40,7 @@ export default function HomePage() {
     const previousThemeColor = themeColor?.content;
 
     root.style.colorScheme = "dark";
-    if (themeColor) themeColor.content = "#121522";
+    if (themeColor) themeColor.content = "#101319";
 
     return () => {
       root.style.colorScheme = previousColorScheme;
@@ -59,24 +58,21 @@ export default function HomePage() {
       >
         Skip to content
       </a>
-      <SignalRail />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          <ConversationPanel
-            mobileOpen={mobilePanelOpen}
-            onClose={closeMobilePanel}
-          />
-          <main
-            id="home-content"
-            className="home-main flex min-w-0 flex-1 flex-col"
-          >
-            {friend ? (
-              <ChatView key={friend.id} friend={friend} {...mobileNavigation} />
-            ) : (
-              <FriendsView {...mobileNavigation} />
-            )}
-          </main>
-        </div>
+      <div className="flex min-w-0 flex-1">
+        <ConversationPanel
+          mobileOpen={mobilePanelOpen}
+          onClose={closeMobilePanel}
+        />
+        <main
+          id="home-content"
+          className="home-main rounded-tl-2xl flex min-w-0 flex-1 flex-col"
+        >
+          {friend ? (
+            <ChatView key={friend.id} friend={friend} {...mobileNavigation} />
+          ) : (
+            <FriendsView {...mobileNavigation} />
+          )}
+        </main>
       </div>
     </div>
   );

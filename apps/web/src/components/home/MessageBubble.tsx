@@ -12,7 +12,7 @@ export function MessageBubble({ message, friend }: MessageBubbleProps) {
         ...friend,
         userName: "You",
         initials: "R",
-        tone: "bg-accent/18 text-accent-bright",
+        tone: "home-avatar",
       }
     : friend;
 
@@ -22,14 +22,14 @@ export function MessageBubble({ message, friend }: MessageBubbleProps) {
       <div
         className={`max-w-[min(78%,36rem)] ${message.own ? "text-right" : ""}`}
       >
-        <p className="px-1 text-xs font-semibold text-white">
+        <p className="px-1 text-xs font-semibold text-content-muted">
           {message.own ? "You" : friend.userName}
         </p>
         <p
           className={`mt-1 wrap-break-word rounded-2xl border px-3.5 py-2.5 text-sm leading-6 ${
             message.own
-              ? "border-accent/38 bg-accent/14 text-content"
-              : "home-message-surface border-border-strong text-content"
+              ? "home-message-own text-content"
+              : "home-message-surface border-border-subtle text-content"
           }`}
         >
           {message.text}

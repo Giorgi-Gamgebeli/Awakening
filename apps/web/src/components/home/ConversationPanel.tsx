@@ -1,9 +1,14 @@
 import { useEffect, useRef } from "react";
 import { NavLink } from "react-router";
-import { FilePlus2, Plus, Search, UsersRound, X } from "lucide-react";
-import { ConversationRow } from "./ConversationRow";
-import { focusRing, friends, groups } from "./constants";
-import type { Friend } from "./types";
+import {
+  Apple,
+  NotebookPen,
+  Bot,
+  CalendarDays,
+  MessageCircle,
+  UsersRound,
+} from "lucide-react";
+import { focusRing, groups } from "./constants";
 
 type ConversationPanelProps = Readonly<{
   mobileOpen: boolean;
@@ -14,13 +19,13 @@ export function ConversationPanel({
   mobileOpen,
   onClose,
 }: ConversationPanelProps) {
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const firstNavigationItemRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     if (!mobileOpen) return;
 
     const focusTimer = window.setTimeout(
-      () => closeButtonRef.current?.focus(),
+      () => firstNavigationItemRef.current?.focus(),
       0,
     );
 
@@ -39,24 +44,50 @@ export function ConversationPanel({
     <>
       <aside
         id="conversation-navigation"
-        className={`home-mobile-drawer home-conversation-panel flex w-80 shrink-0 flex-col border-r border-border-subtle transition-transform duration-300 ease-out max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:w-[min(21rem,calc(100vw-3rem))] max-md:overflow-y-auto max-md:shadow-[1.5rem_0_5rem_color-mix(in_srgb,var(--color-shadow)_62%,transparent)] ${
+        className={`home-mobile-drawer home-conversation-panel bg-ink-950! flex w-80 shrink-0 flex-col border-border-subtle transition-transform duration-300 ease-out max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:w-[min(21rem,calc(100vw-3rem))] max-md:overflow-y-auto max-md:shadow-[1.5rem_0_5rem_color-mix(in_srgb,var(--color-shadow)_62%,transparent)] ${
           mobileOpen
             ? "max-md:visible max-md:translate-x-0"
             : "max-md:invisible max-md:pointer-events-none max-md:-translate-x-full"
         }`}
-        aria-label="Conversations"
+        aria-label="Workspace navigation"
       >
-        <div className="home-panel-toolbar h-21.25 border-b border-border-subtle px-4 pt-4 pb-4 sm:px-5 sm:pt-5">
+        <nav className="flex flex-col gap-1 px-3 py-4" aria-label="Workspace">
+          <NavLink
+            ref={firstNavigationItemRef}
+            to="/home/planner"
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex min-h-12 w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors active:scale-[0.99] ${focusRing} ${
+                isActive
+                  ? "home-selected-surface border-system/32 text-content shadow-[inset_3px_0_0_var(--color-system)]"
+                  : "border-transparent text-content-muted hover:border-border hover:bg-surface-raised hover:text-content"
+              }`
+            }
+          >
+            <CalendarDays size={18} aria-hidden="true" />
+            Planner
+          </NavLink>
           <button
             type="button"
-            className={`home-control-surface flex min-h-11 w-full items-center gap-2 rounded-xl border border-border-strong px-3 py-2 text-left text-sm text-content-muted transition-colors hover:border-system hover:bg-surface-raised hover:text-content ${focusRing}`}
+            className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-content-muted transition-colors hover:bg-surface-raised hover:text-content active:scale-[0.99] ${focusRing}`}
           >
-            <Search size={16} aria-hidden="true" />
-            Search messages
+            <Apple size={18} aria-hidden="true" />
+            Nutrition
           </button>
-        </div>
-
-        <nav className="px-3 pt-3" aria-label="Conversation views">
+          <button
+            type="button"
+            className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-content-muted transition-colors hover:bg-surface-raised hover:text-content active:scale-[0.99] ${focusRing}`}
+          >
+            <NotebookPen size={18} aria-hidden="true" />
+            Notes
+          </button>
+          <button
+            type="button"
+            className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-content-muted transition-colors hover:bg-surface-raised hover:text-content active:scale-[0.99] ${focusRing}`}
+          >
+            <Bot size={18} aria-hidden="true" />
+            System
+          </button>
           <NavLink
             to="/home/friends"
             end
@@ -72,74 +103,66 @@ export function ConversationPanel({
             <UsersRound className="text-system" size={18} aria-hidden="true" />
             Friends
           </NavLink>
+          <button
+            type="button"
+            className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-content-muted transition-colors hover:bg-surface-raised hover:text-content active:scale-[0.99] ${focusRing}`}
+          >
+            <MessageCircle size={18} aria-hidden="true" />
+            Groups
+          </button>
         </nav>
 
-        <section className="mt-5 px-3" aria-labelledby="direct-messages-title">
-          <div className="mb-2 flex items-center justify-between px-2">
-            <h2
-              id="direct-messages-title"
-              className="text-xs font-semibold text-content-muted"
-            >
-              Direct messages
-            </h2>
-            <span className="text-xs text-content-subtle">
-              {friends.length}
-            </span>
-          </div>
-          <div className="grid gap-1">
-            {friends.map((friend: Friend) => (
-              <ConversationRow
-                key={friend.id}
-                friend={friend}
-                onSelect={onClose}
-              />
-            ))}
-          </div>
-        </section>
-
-        <span className="mx-5 my-4 h-px bg-border" aria-hidden="true" />
-
         <section
-          className="flex min-h-0 flex-1 flex-col px-3"
-          aria-labelledby="group-chats-title"
+          className="px-3 pb-3"
+          aria-label={`${groups.length} group chats`}
         >
-          <div className="mb-2 flex items-center justify-between px-2">
-            <h2
-              id="group-chats-title"
-              className="text-xs font-semibold text-content-muted"
-            >
-              Group chats
-            </h2>
-            <button
-              type="button"
-              className={`grid size-10 place-items-center rounded-xl text-content-subtle transition-colors hover:bg-surface-raised hover:text-system ${focusRing}`}
-              aria-label="Create group chat"
-            >
-              <Plus size={16} aria-hidden="true" />
-            </button>
-          </div>
           <div className="grid gap-1">
             {groups.map((group) => (
               <button
                 key={group.id}
                 type="button"
-                className={`flex min-h-14 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-surface-raised ${focusRing}`}
+                className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-surface-raised active:scale-[0.99] ${focusRing}`}
               >
-                <span className="grid size-10 place-items-center rounded-xl bg-surface text-[0.62rem] font-bold text-content-muted">
+                <span className="grid size-9 place-items-center rounded-xl bg-surface text-[0.62rem] font-bold text-content-muted">
                   {group.name.slice(0, 2).toUpperCase()}
                 </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-content-muted">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-content">
                     {group.name}
                   </span>
                   <span className="block text-xs text-content-subtle">
                     {group.members} members
                   </span>
                 </span>
+                <MessageCircle
+                  size={16}
+                  className="text-content-subtle"
+                  aria-hidden="true"
+                />
               </button>
             ))}
           </div>
         </section>
+
+        <div className="mt-auto border-t border-border-subtle p-3">
+          <button
+            type="button"
+            className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-content-muted transition-colors hover:bg-surface-raised hover:text-content active:scale-[0.99] ${focusRing}`}
+            aria-label="Open profile"
+          >
+            <span className="grid size-9 place-items-center rounded-xl bg-surface font-mono text-xs font-bold text-content-muted">
+              R
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold">
+                Your profile
+              </span>
+              <span className="block text-xs text-content-subtle">
+                Account settings
+              </span>
+            </span>
+          </button>
+        </div>
       </aside>
 
       {mobileOpen ? (

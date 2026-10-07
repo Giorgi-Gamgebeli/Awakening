@@ -6,21 +6,21 @@ export const friends: Friend[] = [
     userName: "northstar",
     status: "ONLINE",
     initials: "N",
-    tone: "bg-system/18 text-system",
+    tone: "home-avatar",
   },
   {
     id: "2",
     userName: "mossline",
     status: "IDLE",
     initials: "M",
-    tone: "bg-accent/20 text-accent-bright",
+    tone: "home-avatar",
   },
   {
     id: "3",
     userName: "afterimage",
     status: "OFFLINE",
     initials: "A",
-    tone: "bg-surface text-content-muted",
+    tone: "home-avatar",
   },
 ];
 

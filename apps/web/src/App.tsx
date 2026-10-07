@@ -4,6 +4,7 @@ import { SocketProvider } from "./context/SocketContext";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
+import PlannerPage from "./pages/PlannerPage";
 import {
   authOnlyMiddleware,
   authPagesMiddleware,
@@ -53,6 +54,10 @@ const router = createBrowserRouter([
       {
         path: "friends",
         element: <HomePage />,
+      },
+      {
+        path: "planner",
+        element: <PlannerPage />,
       },
       {
         path: ":friendId",

@@ -44,7 +44,7 @@ model UserSettings {
 
 model DirectMessage {
   id         String   @id @unique
-  content    String
+  content    String   @db.VarChar(4000)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   senderId   String

@@ -28,7 +28,6 @@ export function ChatView({ friend, ...mobileNavigation }: ChatViewProps) {
     <>
       <UtilityHeader
         title={friend.userName}
-        subtitle="Direct message"
         {...mobileNavigation}
       >
         <div className="flex items-center gap-1">

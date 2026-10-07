@@ -1,0 +1,92 @@
+/* Shared by the workspace and portaled system windows. */
+.home-shell,
+.system-window[data-tone] {
+  --home-layout-underlay: var(--color-ink-950);
+  --home-layout-rail: var(--color-ink-950);
+  --home-layout-sidebar: var(--color-ink-950);
+  --home-layout-canvas: #101319;
+  --home-material-well: #0c1016;
+  --home-material-header: var(--home-layout-canvas);
+  --home-material-surface: #171c24;
+  --home-material-message: var(--home-material-surface);
+  --home-material-control: #1b222c;
+  --home-material-selected: #1b2836;
+  --home-material-raised: #252e3a;
+  --home-material-border-subtle: #242d38;
+  --home-material-border: #354251;
+  --home-material-boundary: #627489;
+  --home-content-subtle: #949fad;
+  --home-content-muted: #bcc5d0;
+  --home-content-primary: #edf0f4;
+  --home-system-600: #4c8aba;
+  --home-system-500: #7fb9e3;
+  --home-system-400: #a5d5f5;
+  --home-system-100: #e0f2ff;
+
+  --color-primary: var(--home-material-well);
+  --color-secondary: var(--home-material-surface);
+  --color-surface: var(--home-material-surface);
+  --color-surface-raised: var(--home-material-raised);
+  --color-border: var(--home-material-border);
+  --color-border-subtle: var(--home-material-border-subtle);
+  --color-border-strong: var(--home-material-boundary);
+  --color-content: var(--home-content-primary);
+  --color-content-muted: var(--home-content-muted);
+  --color-content-subtle: var(--home-content-subtle);
+  --color-system: var(--home-system-500);
+  --color-system-hover: var(--home-system-400);
+  --color-system-soft: var(--home-system-100);
+  --color-on-system: var(--color-ink-950);
+  --color-focus: var(--home-system-400);
+  --color-accent: var(--home-system-500);
+  --color-accent-bright: var(--home-system-400);
+  --color-accent-deep: var(--home-system-600);
+  --color-brand-500: var(--home-system-500);
+  --color-brand-600: var(--home-system-600);
+  --color-shadow: var(--color-ink-1100);
+  --color-avatar: var(--home-material-raised);
+  --color-avatar-content: var(--home-content-muted);
+  --color-presence-online: #83b69b;
+  --color-presence-away: #cfb47d;
+  --color-message-own: var(--home-material-selected);
+  --color-message-own-border: var(--home-material-border);
+  color-scheme: dark;
+}
+
+/* System events carry more color than the everyday workspace. */
+.system-window[data-tone] {
+  --color-surface: #131b25;
+  --color-surface-raised: #131b25;
+  --color-system: #65d2fa;
+  --color-system-hover: #a3e5ff;
+  --color-system-soft: #e0f6ff;
+  --color-accent: var(--color-system);
+  --color-accent-bright: var(--color-system-hover);
+  --color-accent-deep: #3481a0;
+  --color-focus: var(--color-system-hover);
+  color: var(--color-content);
+}
+
+.system-window[data-tone="penalty"] {
+  --color-system: #ee918b;
+  --color-system-hover: #ffb9b3;
+  --color-system-soft: #ffe5e2;
+  --color-accent: var(--color-system);
+  --color-accent-bright: var(--color-system-hover);
+  --color-accent-deep: #a64f4b;
+  --color-focus: var(--color-system-hover);
+}
+
+.system-window[data-tone] .system-window-frame {
+  background: color-mix(in srgb, var(--color-system) 60%, var(--color-surface));
+  box-shadow: 0 24px 80px
+    color-mix(in srgb, var(--color-shadow) 65%, transparent);
+}
+
+.system-window[data-tone] .system-window-surface {
+  background: var(--color-surface);
+}
+
+.system-window[data-tone] .system-window-heading {
+  color: var(--color-system);
+}

@@ -1,7 +1,6 @@
 export * from "./types";
 export * from "./constants";
 export { Avatar } from "./Avatar";
-export { SignalRail } from "./SignalRail";
 export { ConversationRow } from "./ConversationRow";
 export { ConversationPanel } from "./ConversationPanel";
 export { UtilityHeader } from "./UtilityHeader";
