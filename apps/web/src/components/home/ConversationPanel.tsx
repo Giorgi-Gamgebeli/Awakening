@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { NavLink } from "react-router";
-import { FilePlus2, Plus, Search, UsersRound, X } from "lucide-react";
+import { Plus, Search, UsersRound } from "lucide-react";
 import { ConversationRow } from "./ConversationRow";
 import { focusRing, friends, groups } from "./constants";
 import type { Friend } from "./types";
