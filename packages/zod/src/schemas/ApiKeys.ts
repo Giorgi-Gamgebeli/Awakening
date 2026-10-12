@@ -1,13 +1,12 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 
-export const ApiKeysPurposeSchema = z.enum(["AGENT", "TRANSLATION"]);
 export const ApiKeysProviderSchema = z.enum(["GEMINI", "OPENAI", "ANTHROPIC"]);
 
 export const ApiKeysCreateInputSchema = z.object({
   key: z.string().min(1),
   provider: ApiKeysProviderSchema,
-  purpose: ApiKeysPurposeSchema,
+  label: z.string().trim().max(50).optional(),
 });
 
 export const ApiKeysCreateOutputSchema = z.object({
@@ -15,17 +14,25 @@ export const ApiKeysCreateOutputSchema = z.object({
   // The database previously allowed custom labels, so persisted legacy keys can
   // still be listed. New and updated keys are restricted by the input schema.
   provider: z.string(),
-  purpose: ApiKeysPurposeSchema,
+  label: z.string().nullable(),
+  selectedModel: z.string().nullable(),
+  isActive: z.boolean(),
 });
 
 export const ApiKeysPatchInputSchema = z
   .object({
     id: z.coerce.number().int().positive(),
     provider: ApiKeysProviderSchema.optional(),
-    purpose: ApiKeysPurposeSchema.optional(),
+    label: z.string().trim().max(50).nullable().optional(),
+    selectedModel: z.string().trim().min(1).nullable().optional(),
+    isActive: z.boolean().optional(),
   })
   .refine(
-    ({ provider, purpose }) => provider !== undefined || purpose !== undefined,
+    ({ provider, label, selectedModel, isActive }) =>
+      provider !== undefined ||
+      label !== undefined ||
+      selectedModel !== undefined ||
+      isActive !== undefined,
     { message: "Provide at least one field to update." },
   );
 

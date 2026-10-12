@@ -4,7 +4,6 @@ import { generateText } from 'ai';
 import { z } from '@repo/zod';
 import {
   toAgentChatResult,
-  MODEL_PROBE_TIMEOUT_MS,
   type AgentModel,
   type AgentProvider,
 } from './agent-provider';
@@ -60,16 +59,5 @@ export class AnthropicProvider implements AgentProvider {
     });
 
     return toAgentChatResult(result.text, result.finishReason);
-  }
-
-  async probeModel(apiKey: string, model: string): Promise<void> {
-    const anthropic = createAnthropic({ apiKey });
-    await generateText({
-      model: anthropic(model),
-      prompt: 'Reply with exactly OK.',
-      maxOutputTokens: 2,
-      maxRetries: 0,
-      timeout: MODEL_PROBE_TIMEOUT_MS,
-    });
   }
 }

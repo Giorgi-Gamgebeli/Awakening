@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Bot, Cable, Send, Sparkles } from "lucide-react";
 import { ApiKeysProviderSchema } from "@repo/zod";
@@ -14,8 +15,6 @@ export function AiPage() {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [prompt, setPrompt] = useState("");
-  const [selectedApiKeyId, setSelectedApiKeyId] = useState<number>();
-  const [selectedModelId, setSelectedModelId] = useState<string>();
   const apiKeysQuery = useQuery(orpc.apiKeys.findMany.queryOptions());
   const chatMutation = useMutation(orpc.agent.chat.mutationOptions());
 
@@ -25,12 +24,11 @@ export function AiPage() {
 
   const agentKeys = (apiKeysQuery.data ?? []).filter((apiKey) => {
     return (
-      apiKey.purpose === "AGENT" &&
       ApiKeysProviderSchema.safeParse(apiKey.provider).success
     );
   });
   const selectedApiKey =
-    agentKeys.find((apiKey) => apiKey.id === selectedApiKeyId) ?? agentKeys[0];
+    agentKeys.find((apiKey) => apiKey.isActive) ?? agentKeys[0];
   const modelsQuery = useQuery({
     ...orpc.agent.models.queryOptions({
       input: { apiKeyId: selectedApiKey?.id ?? 1 },
@@ -39,9 +37,9 @@ export function AiPage() {
   });
   const models = modelsQuery.data ?? [];
   const { refetch: refetchModels } = modelsQuery;
-  const selectedModel =
-    models.find((model) => model.id === selectedModelId) ?? models[0];
-  const canSend = Boolean(selectedApiKey && selectedModel && prompt.trim());
+  const storedModelId = selectedApiKey?.selectedModel ?? undefined;
+  const selectedModel = models.find((model) => model.id === storedModelId);
+  const canSend = Boolean(selectedApiKey && storedModelId && prompt.trim());
 
   function closeMobilePanel() {
     setMobilePanelOpen(false);
@@ -61,12 +59,12 @@ export function AiPage() {
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!selectedApiKey || !selectedModel || !prompt.trim()) return;
+    if (!selectedApiKey || !storedModelId || !prompt.trim()) return;
 
     chatMutation.mutate({
       text: prompt,
       apiKeyId: selectedApiKey.id,
-      model: selectedModel.id,
+      model: storedModelId,
     });
   }
 
@@ -112,7 +110,7 @@ export function AiPage() {
               {...mobileNavigation}
             >
               <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 font-mono text-[0.6875rem] font-bold tracking-[0.08em] text-accent-bright">
-                {selectedApiKey ? "READY" : "NO AGENT KEY"}
+                {selectedApiKey ? "READY" : "NO API KEY"}
               </span>
             </UtilityHeader>
 
@@ -166,55 +164,24 @@ export function AiPage() {
                 className="mx-auto mt-6 grid w-full max-w-3xl gap-3"
                 onSubmit={handleSubmit}
               >
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="grid gap-1.5 text-xs font-semibold text-content-muted">
-                    API key
-                    <select
-                      value={selectedApiKey?.id ?? ""}
-                      onChange={(event) =>
-                        setSelectedApiKeyId(Number(event.target.value))
-                      }
-                      disabled={!agentKeys.length || chatMutation.isPending}
-                      className={`min-h-11 rounded-xl border border-border bg-surface-raised px-3 py-2 text-sm text-content disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
-                    >
-                      {!agentKeys.length ? (
-                        <option>No supported agent key</option>
-                      ) : null}
-                      {agentKeys.map((apiKey) => (
-                        <option key={apiKey.id} value={apiKey.id}>
-                          {apiKey.provider} key #{apiKey.id}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="grid gap-1.5 text-xs font-semibold text-content-muted">
-                    Model
-                    <select
-                      value={selectedModel?.id ?? ""}
-                      onChange={(event) =>
-                        setSelectedModelId(event.target.value)
-                      }
-                      disabled={
-                        !selectedApiKey ||
-                        modelsQuery.isLoading ||
-                        chatMutation.isPending
-                      }
-                      className={`min-h-11 rounded-xl border border-border bg-surface-raised px-3 py-2 text-sm text-content disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
-                    >
-                      {!models.length ? (
-                        <option>
-                          {modelsQuery.isLoading
-                            ? "Loading models…"
-                            : "No compatible model"}
-                        </option>
-                      ) : null}
-                      {models.map((model) => (
-                        <option key={model.id} value={model.id}>
-                          {model.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-xs text-content-muted">
+                  <span>
+                    Using{" "}
+                    {selectedApiKey
+                      ? `${selectedApiKey.provider} key #${selectedApiKey.id}`
+                      : "no API key"}
+                  </span>
+                  <span>
+                    {storedModelId
+                      ? `Model: ${selectedModel?.label ?? storedModelId}`
+                      : "No model selected"}
+                  </span>
+                  <Link
+                    to="/home/settings"
+                    className={`font-semibold text-system underline-offset-2 hover:underline ${focusRing}`}
+                  >
+                    Change in Settings
+                  </Link>
                 </div>
                 <div className="flex gap-3">
                   <label className="sr-only" htmlFor="ai-prompt">
@@ -224,11 +191,15 @@ export function AiPage() {
                     id="ai-prompt"
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
-                    disabled={!selectedApiKey || chatMutation.isPending}
+                    disabled={
+                      !selectedApiKey || !storedModelId || chatMutation.isPending
+                    }
                     placeholder={
-                      selectedApiKey
-                        ? "Ask the AI assistant"
-                        : "Add an agent key in Settings first"
+                      !selectedApiKey
+                        ? "Add an API key in Settings first"
+                        : !storedModelId
+                          ? "Select a model for this key in Settings first"
+                          : "Ask the AI assistant"
                     }
                     className="min-w-0 flex-1 rounded-xl border border-border bg-surface-raised px-4 py-3 text-sm text-content placeholder:text-content-subtle disabled:cursor-not-allowed disabled:opacity-70"
                   />

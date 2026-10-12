@@ -4,7 +4,6 @@ import { generateText } from 'ai';
 import { z } from '@repo/zod';
 import {
   toAgentChatResult,
-  MODEL_PROBE_TIMEOUT_MS,
   type AgentModel,
   type AgentProvider,
 } from './agent-provider';
@@ -12,15 +11,6 @@ import {
 const openAiModelsResponseSchema = z.object({
   data: z.array(z.object({ id: z.string() })),
 });
-
-function isTextGenerationModel(id: string) {
-  return (
-    /^(gpt-|chatgpt-|o[1-4](?:-|$))/.test(id) &&
-    !/(?:audio|image|realtime|transcribe|tts|embedding|moderation|search|whisper)/.test(
-      id,
-    )
-  );
-}
 
 @Injectable()
 export class OpenAiProvider implements AgentProvider {
@@ -41,7 +31,6 @@ export class OpenAiProvider implements AgentProvider {
 
     return data
       .map(({ id }) => id)
-      .filter(isTextGenerationModel)
       .map((id) => ({ id, label: id }));
   }
 
@@ -61,16 +50,5 @@ export class OpenAiProvider implements AgentProvider {
     });
 
     return toAgentChatResult(result.text, result.finishReason);
-  }
-
-  async probeModel(apiKey: string, model: string): Promise<void> {
-    const openai = createOpenAI({ apiKey });
-    await generateText({
-      model: openai(model),
-      prompt: 'Reply with exactly OK.',
-      maxOutputTokens: 2,
-      maxRetries: 0,
-      timeout: MODEL_PROBE_TIMEOUT_MS,
-    });
   }
 }

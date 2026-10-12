@@ -15,22 +15,31 @@ export class ApiKeysService {
   constructor(private readonly cryptoService: CryptoService) {}
 
   async create(
-    { key, provider, purpose }: z.infer<typeof ApiKeysCreateInputSchema>,
+    { key, provider, label }: z.infer<typeof ApiKeysCreateInputSchema>,
     userId: string,
   ) {
     const encryptedKey = this.cryptoService.encrypt(key);
+
+    // The first key becomes active so the AI has a default.
+    const hasActiveKey = await db.userApiKeys.findFirst({
+      where: { userId, isActive: true },
+      select: { id: true },
+    });
 
     const apiKey = await db.userApiKeys.create({
       data: {
         key: encryptedKey,
         provider,
-        purpose,
+        label,
         userId,
+        isActive: !hasActiveKey,
       },
       select: {
         id: true,
         provider: true,
-        purpose: true,
+        label: true,
+        selectedModel: true,
+        isActive: true,
       },
     });
 
@@ -47,38 +56,67 @@ export class ApiKeysService {
       select: {
         id: true,
         provider: true,
-        purpose: true,
+        label: true,
+        selectedModel: true,
+        isActive: true,
       },
     });
   }
 
   async patch(
-    { purpose, provider, id }: z.infer<typeof ApiKeysPatchInputSchema>,
+    {
+      provider,
+      label,
+      selectedModel,
+      isActive,
+      id,
+    }: z.infer<typeof ApiKeysPatchInputSchema>,
     userId: string,
   ): Promise<z.infer<typeof ApiKeysPatchOutputSchema>> {
-    const [updatedKey] = await db.userApiKeys.updateManyAndReturn({
-      where: {
-        id,
-        userId,
-      },
-      data: {
-        purpose,
-        provider,
-        availableModels: provider === undefined ? undefined : Prisma.DbNull,
-        modelsUpdatedAt: provider === undefined ? undefined : null,
-      },
-      select: {
-        id: true,
-        provider: true,
-        purpose: true,
-      },
+    const existing = await db.userApiKeys.findFirst({
+      where: { id, userId },
+      select: { id: true },
     });
 
-    if (!updatedKey) {
+    if (!existing) {
       throw new ORPCError('NOT_FOUND', {
         message: 'API key not found.',
       });
     }
+
+    const updatedKey = await db.$transaction(async (tx) => {
+      if (isActive) {
+        // Only one key can be active for a user at a time.
+        await tx.userApiKeys.updateMany({
+          where: {
+            userId,
+            isActive: true,
+            id: { not: id },
+          },
+          data: { isActive: false },
+        });
+      }
+
+      return await tx.userApiKeys.update({
+        where: { id },
+        data: {
+          provider,
+          label,
+          isActive,
+          availableModels: provider === undefined ? undefined : Prisma.DbNull,
+          modelsUpdatedAt: provider === undefined ? undefined : null,
+          // A new provider invalidates the previously picked model.
+          selectedModel: provider === undefined ? selectedModel : null,
+        },
+        select: {
+          id: true,
+          provider: true,
+          label: true,
+          selectedModel: true,
+          isActive: true,
+        },
+      });
+    });
 
     return updatedKey;
   }

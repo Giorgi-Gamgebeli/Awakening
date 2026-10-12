@@ -4,12 +4,16 @@ import {
   CATEGORY_META,
   IMPORTANCE_META,
   RECURRENCE_META,
-  type Category,
   type EventDraft,
-  type Importance,
-  type RecurrencePreset,
 } from "./types";
 import { focusRing } from "../home/constants";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { systemEase } from "../../animations/shared";
 
 export interface DialogState {
@@ -45,6 +49,38 @@ function fromLocalInputValue(value: string): string {
 }
 
 const inputClass = `h-11 w-full rounded-xl border border-border-subtle bg-canvas/45 px-3 text-sm text-content outline-none placeholder:text-content-subtle focus:border-system focus:ring-1 focus:ring-system/45 ${focusRing}`;
+
+function FieldSelect<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: Readonly<{
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: Readonly<Record<T, { label: string }>>;
+}>) {
+  return (
+    <div className="grid gap-1.5">
+      <span className="text-xs font-semibold text-content-muted">{label}</span>
+      <Select value={value} onValueChange={(next) => onChange(next as T)}>
+        <SelectTrigger aria-label={label} className="border-border-subtle bg-canvas/45">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(Object.entries(options) as [T, { label: string }][]).map(
+            ([optionValue, meta]) => (
+              <SelectItem key={optionValue} value={optionValue}>
+                {meta.label}
+              </SelectItem>
+            ),
+          )}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 export function EventDialog({
   state,
@@ -125,47 +161,18 @@ export function EventDialog({
           </label>
 
           <div className="grid grid-cols-2 gap-3">
-            <label className="grid gap-1.5">
-              <span className="text-xs font-semibold text-content-muted">
-                Category
-              </span>
-              <select
-                className={inputClass}
-                value={draft.category}
-                onChange={(e) => set("category", e.target.value as Category)}
-              >
-                {(
-                  Object.entries(CATEGORY_META) as [Category, { label: string }][]
-                ).map(([value, meta]) => (
-                  <option key={value} value={value}>
-                    {meta.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1.5">
-              <span className="text-xs font-semibold text-content-muted">
-                Importance
-              </span>
-              <select
-                className={inputClass}
-                value={draft.importance}
-                onChange={(e) =>
-                  set("importance", e.target.value as Importance)
-                }
-              >
-                {(
-                  Object.entries(IMPORTANCE_META) as [
-                    Importance,
-                    { label: string },
-                  ][]
-                ).map(([value, meta]) => (
-                  <option key={value} value={value}>
-                    {meta.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <FieldSelect
+              label="Category"
+              value={draft.category}
+              onChange={(value) => set("category", value)}
+              options={CATEGORY_META}
+            />
+            <FieldSelect
+              label="Importance"
+              value={draft.importance}
+              onChange={(value) => set("importance", value)}
+              options={IMPORTANCE_META}
+            />
           </div>
 
           <label className="flex items-center gap-2 text-sm text-content-muted">
@@ -203,29 +210,12 @@ export function EventDialog({
             </label>
           </div>
 
-          <label className="grid gap-1.5">
-            <span className="text-xs font-semibold text-content-muted">
-              Repeat
-            </span>
-            <select
-              className={inputClass}
-              value={draft.recurrence}
-              onChange={(e) =>
-                set("recurrence", e.target.value as RecurrencePreset)
-              }
-            >
-              {(
-                Object.entries(RECURRENCE_META) as [
-                  RecurrencePreset,
-                  { label: string },
-                ][]
-              ).map(([value, meta]) => (
-                <option key={value} value={value}>
-                  {meta.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <FieldSelect
+            label="Repeat"
+            value={draft.recurrence}
+            onChange={(value) => set("recurrence", value)}
+            options={RECURRENCE_META}
+          />
 
           <label className="grid gap-1.5">
             <span className="text-xs font-semibold text-content-muted">

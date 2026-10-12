@@ -4,7 +4,6 @@ import { generateText } from 'ai';
 import { z } from '@repo/zod';
 import {
   toAgentChatResult,
-  MODEL_PROBE_TIMEOUT_MS,
   type AgentModel,
   type AgentProvider,
 } from './agent-provider';
@@ -20,15 +19,6 @@ const geminiModelsResponseSchema = z.object({
     )
     .default([]),
 });
-
-function isTextChatModel(id: string) {
-  return (
-    /^(gemini|gemma)-/.test(id) &&
-    !/(?:tts|transcribe|image|lyria|robotics|computer-use|antigravity|deep-research|omni)/.test(
-      id,
-    )
-  );
-}
 
 @Injectable()
 export class GeminiProvider implements AgentProvider {
@@ -51,17 +41,13 @@ export class GeminiProvider implements AgentProvider {
     const { models } = geminiModelsResponseSchema.parse(await response.json());
 
     return models
-      .filter((model) =>
-        model.supportedGenerationMethods?.includes('generateContent'),
-      )
       .map((model) => {
         const id = model.name.replace(/^models\//, '');
         return {
           id,
           label: model.displayName ?? id,
         };
-      })
-      .filter((model) => isTextChatModel(model.id));
+      });
   }
 
   async chat({
@@ -80,16 +66,5 @@ export class GeminiProvider implements AgentProvider {
     });
 
     return toAgentChatResult(result.text, result.finishReason);
-  }
-
-  async probeModel(apiKey: string, model: string): Promise<void> {
-    const google = createGoogleGenerativeAI({ apiKey });
-    await generateText({
-      model: google(model),
-      prompt: 'Reply with exactly OK.',
-      maxOutputTokens: 2,
-      maxRetries: 0,
-      timeout: MODEL_PROBE_TIMEOUT_MS,
-    });
   }
 }

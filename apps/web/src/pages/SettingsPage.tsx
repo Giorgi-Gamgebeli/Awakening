@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { TriangleAlert } from "lucide-react";
-import { ApiKeysCreateInputSchema } from "@repo/zod";
+import { ApiKeysCreateInputSchema, ApiKeysProviderSchema } from "@repo/zod";
 import type { z } from "@repo/zod";
 import { ConversationPanel, UtilityHeader } from "../components/home";
 import { ApiKeySection } from "../components/settings/ApiKeySection";
@@ -11,6 +10,8 @@ import "./HomePage.css";
 export function SettingsPage() {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const [patchingId, setPatchingId] = useState<number | null>(null);
+  const [patchError, setPatchError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const apiKeysQuery = useQuery(orpc.apiKeys.findMany.queryOptions());
   const createApiKeyMutation = useMutation({
@@ -32,6 +33,7 @@ export function SettingsPage() {
       );
     },
   });
+  const patchApiKeyMutation = useMutation(orpc.apiKeys.patch.mutationOptions());
 
   useEffect(() => {
     document.title = "Settings | Awakening";
@@ -65,10 +67,41 @@ export function SettingsPage() {
   }
 
   const apiKeys = apiKeysQuery.data ?? [];
-  const agentKeys = apiKeys.filter((apiKey) => apiKey.purpose === "AGENT");
-  const translationKeys = apiKeys.filter(
-    (apiKey) => apiKey.purpose === "TRANSLATION",
-  );
+  async function patchApiKey(
+    id: number,
+    data: {
+      label?: string | null;
+      provider?: z.infer<typeof ApiKeysProviderSchema>;
+      selectedModel?: string;
+      isActive?: boolean;
+    },
+  ) {
+    setPatchError(null);
+    setPatchingId(id);
+    try {
+      const updated = await patchApiKeyMutation.mutateAsync({ id, ...data });
+      queryClient.setQueryData(
+        orpc.apiKeys.findMany.queryKey(),
+        (current = []) =>
+          current.map((apiKey) =>
+            apiKey.id === updated.id
+              ? updated
+              : updated.isActive &&
+                  apiKey.isActive
+                ? { ...apiKey, isActive: false }
+                : apiKey,
+          ),
+      );
+    } catch {
+      setPatchError("Could not save this change. Please try again.");
+    } finally {
+      setPatchingId(null);
+    }
+  }
+
+  async function selectActiveKey(id: number) {
+    await patchApiKey(id, { isActive: true });
+  }
 
   function closeMobilePanel() {
     setMobilePanelOpen(false);
@@ -100,47 +133,33 @@ export function SettingsPage() {
         >
             <UtilityHeader
               title="Settings"
-              subtitle="Your providers and API keys"
               {...mobileNavigation}
             />
 
             <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-6 sm:px-7">
-              <div className="mx-auto grid w-full max-w-3xl gap-4">
+              <div className="grid w-full gap-4">
                 {apiKeysQuery.isError ? (
                   <p className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
                     Could not load saved API keys.
                   </p>
                 ) : null}
-                <p className="flex items-start gap-2 rounded-2xl border border-border bg-surface px-4 py-3 text-xs leading-5 text-content-muted">
-                  <TriangleAlert
-                    size={15}
-                    aria-hidden="true"
-                    className="mt-0.5 shrink-0 text-system"
-                  />
-                  Keys are encrypted and saved on the server. Their original
-                  values are never returned to this browser.
-                </p>
+                {patchError ? (
+                  <p role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+                    {patchError}
+                  </p>
+                ) : null}
 
                 <ApiKeySection
-                  title="Agent keys"
-                  description="Do the actual work in the app and connect to your MCP server. First key is primary, the rest are fallbacks."
-                  items={agentKeys}
-                  purpose="AGENT"
+                  title="API keys"
+                  description="Add a provider key, select which one powers the AI, and choose a model for each key."
+                  items={apiKeys}
                   onSave={createApiKey}
                   onDelete={deleteApiKey}
-                  keyPlaceholder="Paste agent API key"
-                  listLabel="agent-keys"
-                />
-
-                <ApiKeySection
-                  title="Translation keys"
-                  description="Handle translations when the work provider can't fully translate a language. E.g. Gemini translates, OpenAI does the work."
-                  items={translationKeys}
-                  purpose="TRANSLATION"
-                  onSave={createApiKey}
-                  onDelete={deleteApiKey}
-                  keyPlaceholder="Paste translation API key"
-                  listLabel="translation-keys"
+                  keyPlaceholder="Paste API key"
+                  listLabel="api-keys"
+                  onSelectActive={selectActiveKey}
+                  onUpdate={patchApiKey}
+                  patchingId={patchingId}
                 />
               </div>
             </div>

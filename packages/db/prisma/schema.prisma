@@ -93,11 +93,6 @@ enum UserStatus {
   OFFLINE
 }
 
-enum UserApiKeysPurpose {
-  AGENT
-  TRANSLATION
-}
-
 model Session {
   id        String   @id @unique @default(uuid())
   token     String   @unique
@@ -148,13 +143,15 @@ model Verification {
 model UserApiKeys {
   id              Int                @id @unique @default(autoincrement())
   provider        String
+  label           String?
   key             String
-  purpose         UserApiKeysPurpose @default(AGENT)
   userId          String
   availableModels Json?
   modelsUpdatedAt DateTime?
+  selectedModel   String?
+  isActive        Boolean            @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, purpose])
+  @@index([userId])
 }

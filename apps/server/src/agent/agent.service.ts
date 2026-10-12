@@ -14,8 +14,7 @@ import { CryptoService } from '../crypto/crypto.service';
 import { AgentProviderRegistry } from './providers/agent-provider-registry.service';
 
 const MODELS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const MODELS_CACHE_VERSION = 3;
-const MODEL_PROBE_CONCURRENCY = 5;
+const MODELS_CACHE_VERSION = 5;
 
 const modelsCacheSchema = z.object({
   version: z.literal(MODELS_CACHE_VERSION),
@@ -36,7 +35,6 @@ export class AgentService {
       where: {
         id: apiKeyId,
         userId,
-        purpose: 'AGENT',
       },
       select: {
         id: true,
@@ -49,7 +47,7 @@ export class AgentService {
 
     if (!encryptedApiKey)
       throw new ORPCError('NOT_FOUND', {
-        message: 'Add an agent API key in Settings first.',
+        message: 'Add an API key in Settings first.',
       });
 
     const providerResult = ApiKeysProviderSchema.safeParse(
@@ -89,16 +87,9 @@ export class AgentService {
   private async refreshModels(
     agentKey: Awaited<ReturnType<AgentService['getAgentProvider']>>,
     userId: string,
-    unavailableModelId?: string,
   ): Promise<z.infer<typeof agentModelsOutputSchema>> {
     try {
-      const discoveredModels = await agentKey.provider.listModels(
-        agentKey.apiKey,
-      );
-      const candidates = unavailableModelId
-        ? discoveredModels.filter(({ id }) => id !== unavailableModelId)
-        : discoveredModels;
-      const models = await this.probeModels(agentKey, candidates, userId);
+      const models = await agentKey.provider.listModels(agentKey.apiKey);
 
       await db.userApiKeys.update({
         where: { id: agentKey.id },
@@ -121,39 +112,6 @@ export class AgentService {
         message: 'The AI provider could not load its available models.',
       });
     }
-  }
-
-  /**
-   * Provider list endpoints describe known models, not necessarily models this
-   * API key is authorised to call. Probe each candidate with a two-token text
-   * request and cache only the models that actually succeed.
-   */
-  private async probeModels(
-    agentKey: Awaited<ReturnType<AgentService['getAgentProvider']>>,
-    candidates: z.infer<typeof agentModelsOutputSchema>,
-    userId: string,
-  ): Promise<z.infer<typeof agentModelsOutputSchema>> {
-    const verifiedModels: z.infer<typeof agentModelsOutputSchema> = [];
-
-    for (let start = 0; start < candidates.length; start += MODEL_PROBE_CONCURRENCY) {
-      const batch = candidates.slice(start, start + MODEL_PROBE_CONCURRENCY);
-      const results = await Promise.all(
-        batch.map(async (model) => {
-          try {
-            await agentKey.provider.probeModel(agentKey.apiKey, model.id);
-            return model;
-          } catch (error) {
-            this.logger.debug(
-              `AI model probe rejected: provider=${agentKey.provider.name}, model=${model.id}, userId=${userId}, reason=${error instanceof Error ? error.message : 'unknown'}`,
-            );
-            return null;
-          }
-        }),
-      );
-      verifiedModels.push(...results.filter((model) => model !== null));
-    }
-
-    return verifiedModels;
   }
 
   private isModelUnavailableError(error: unknown) {
@@ -207,7 +165,7 @@ export class AgentService {
       });
     } catch (error) {
       if (this.isModelUnavailableError(error)) {
-        await this.refreshModels(agentKey, userId, model);
+        await this.refreshModels(agentKey, userId);
         throw new ORPCError('BAD_REQUEST', {
           message: 'This model is no longer available. Choose another model.',
         });
