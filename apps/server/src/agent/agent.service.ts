@@ -162,7 +162,7 @@ export class AgentService {
   }
 
   async chat(
-    { text, apiKeyId, model }: z.infer<typeof agentChatInputSchema>,
+    { text, apiKeyId, model, sessionId }: z.infer<typeof agentChatInputSchema>,
     userId: string,
   ): Promise<z.infer<typeof agentChatOutputSchema>> {
     const agentKey = await this.getAgentProvider(apiKeyId, userId);
@@ -178,6 +178,30 @@ export class AgentService {
       });
     }
 
+    // Resolve (or auto-create) the session first so every turn is durable.
+    // Every query is scoped by userId: a session id alone never grants access.
+    const session = await this.resolveSession(
+      sessionId,
+      userId,
+      apiKeyId,
+      model,
+      agentKey.provider.name,
+      text,
+    );
+
+    const userMessage = await this.appendMessage(
+      session.id,
+      'USER',
+      text,
+      null,
+    );
+
+    // Context assembly seam: stateless providers still get continuity by
+    // stitching the recent transcript into a single prompt. Swap this for
+    // native message-array calls when providers support it.
+    const history = await this.loadHistory(session.id);
+    const prompt = this.buildPrompt(history, text);
+
     try {
       const reasoningEffort =
         ApiKeysReasoningEffortSchema.safeParse(agentKey.reasoningEffort);
@@ -186,12 +210,29 @@ export class AgentService {
           ? reasoningEffort.data
           : null;
 
-      return await agentKey.provider.chat({
+      const result = await agentKey.provider.chat({
         apiKey: agentKey.apiKey,
-        text,
+        text: prompt,
         model,
         reasoningEffort: requestedReasoningEffort,
       });
+
+      const assistantText =
+        result.status === 'success' ? result.text : result.message;
+      const assistantMessage = await this.appendMessage(
+        session.id,
+        'ASSISTANT',
+        assistantText,
+        model,
+      );
+      await this.touchSession(session.id, apiKeyId, model);
+
+      return {
+        ...result,
+        sessionId: session.id,
+        userMessageId: userMessage.id,
+        assistantMessageId: assistantMessage.id,
+      };
     } catch (error) {
       if (this.isModelUnavailableError(error)) {
         await this.refreshModels(agentKey, userId);
@@ -208,5 +249,105 @@ export class AgentService {
         message: 'The AI provider could not complete the request.',
       });
     }
+  }
+
+  private async resolveSession(
+    sessionId: string | undefined,
+    userId: string,
+    apiKeyId: number,
+    model: string,
+    provider: string,
+    firstText: string,
+  ) {
+    if (sessionId) {
+      const existing = await db.agentSession.findFirst({
+        where: { id: sessionId, userId },
+        select: { id: true },
+      });
+      if (!existing) {
+        throw new ORPCError('NOT_FOUND', { message: 'Chat not found.' });
+      }
+      return existing;
+    }
+
+    const title =
+      firstText.replace(/\s+/g, ' ').trim().slice(0, 57) +
+      (firstText.trim().length > 57 ? '...' : '');
+
+    return await db.agentSession.create({
+      data: {
+        userId,
+        apiKeyId,
+        title: title || 'New chat',
+        model,
+        provider: provider as never,
+      },
+      select: { id: true },
+    });
+  }
+
+  private async appendMessage(
+    sessionId: string,
+    role: 'USER' | 'ASSISTANT' | 'SYSTEM',
+    content: string,
+    model: string | null,
+  ) {
+    // Append-only writes with optimistic concurrency: the UNIQUE(sessionId, seq)
+    // constraint rejects interleaved writes from two tabs; retry picks the next seq.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const last = await db.agentMessage.findFirst({
+        where: { sessionId },
+        orderBy: { seq: 'desc' },
+        select: { seq: true },
+      });
+      const seq = (last?.seq ?? -1) + 1;
+      try {
+        const created = await db.agentMessage.create({
+          data: { sessionId, seq, role, content, model },
+          select: { id: true, seq: true },
+        });
+        return created;
+      } catch (error) {
+        const isUniqueConflict =
+          typeof error === 'object' &&
+          error !== null &&
+          'code' in error &&
+          (error as { code?: string }).code === 'P2002';
+        if (!isUniqueConflict || attempt === 2) throw error;
+      }
+    }
+    throw new ORPCError('CONFLICT', {
+      message: 'Message conflict. Reload the chat and retry.',
+    });
+  }
+
+  private async loadHistory(sessionId: string, limit = 20) {
+    const rows = await db.agentMessage.findMany({
+      where: { sessionId },
+      orderBy: { seq: 'desc' },
+      take: limit,
+      select: { role: true, content: true },
+    });
+    return [...rows].reverse();
+  }
+
+  private buildPrompt(
+    history: Array<{ role: string; content: string }>,
+    currentText: string,
+  ): string {
+    // Exclude the just-saved user turn (last entry) to avoid duplication.
+    const prior = history.slice(0, -1).slice(-10);
+    if (prior.length === 0) return currentText;
+    const transcript = prior
+      .map((m) => `${m.role === 'USER' ? 'User' : 'Assistant'}: ${m.content}`)
+      .join('\n');
+    return `Previous conversation:\n${transcript}\n\nCurrent message: ${currentText}`;
+  }
+
+  private async touchSession(sessionId: string, apiKeyId: number, model: string) {
+    await db.agentSession.update({
+      where: { id: sessionId },
+      data: { lastMessageAt: new Date(), apiKeyId, model },
+    });
   }
 }

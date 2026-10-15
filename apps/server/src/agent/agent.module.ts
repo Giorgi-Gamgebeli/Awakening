@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AgentService } from './agent.service';
+import { AgentSessionsService } from './agent-sessions.service';
 import { AgentController } from './agent.controller';
 import { CryptoModule } from '../crypto/crypto.module';
 import { AgentProviderRegistry } from './providers/agent-provider-registry.service';
@@ -12,11 +13,12 @@ import { OpenAiProvider } from './providers/openai.provider';
   controllers: [AgentController],
   providers: [
     AgentService,
+    AgentSessionsService,
     AgentProviderRegistry,
     GeminiProvider,
     OpenAiProvider,
     AnthropicProvider,
   ],
-  exports: [AgentProviderRegistry, AgentService],
+  exports: [AgentProviderRegistry, AgentService, AgentSessionsService],
 })
 export class AgentModule {}

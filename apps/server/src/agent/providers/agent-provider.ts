@@ -1,12 +1,14 @@
 import {
-  agentChatOutputSchema,
   agentModelSchema,
   ApiKeysProviderSchema,
   ApiKeysReasoningEffortSchema,
   z,
 } from '@repo/zod';
 
-export type AgentChatResult = z.infer<typeof agentChatOutputSchema>;
+export type AgentChatResult =
+  | { status: 'success'; text: string }
+  | { status: 'blocked'; reason: string; message: string }
+  | { status: 'incomplete'; reason: string; message: string };
 export type AgentModel = z.infer<typeof agentModelSchema>;
 export type AgentProviderName = z.infer<typeof ApiKeysProviderSchema>;
 
