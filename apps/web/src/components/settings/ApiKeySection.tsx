@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import * as Dialog from "@radix-ui/react-dialog";
 import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
@@ -9,8 +9,10 @@ import {
   ApiKeysCreateInputSchema,
   ApiKeysFindManyOutputSchema,
   ApiKeysProviderSchema,
+  ApiKeysReasoningEffortSchema,
+  agentModelsOutputSchema,
+  z,
 } from "@repo/zod";
-import type { z } from "@repo/zod";
 import { orpc } from "../../lib/orpc";
 import {
   Select,
@@ -22,6 +24,18 @@ import {
 import { focusRing } from "../home/constants";
 
 type ApiKeyEntry = z.infer<typeof ApiKeysFindManyOutputSchema>[number];
+
+const ApiKeysCreateFormSchema = ApiKeysCreateInputSchema.extend({
+  selectedModel: z.string(),
+});
+
+function useAgentModels(apiKeyId: number) {
+  const modelsQuery = useQuery(
+    orpc.agent.models.queryOptions({ input: { apiKeyId } }),
+  );
+
+  return { models: modelsQuery.data ?? [], isLoading: modelsQuery.isLoading };
+}
 
 type ApiKeySectionProps = Readonly<{
   title: string;
@@ -38,6 +52,7 @@ type ApiKeySectionProps = Readonly<{
       label?: string | null;
       provider?: z.infer<typeof ApiKeysProviderSchema>;
       selectedModel?: string;
+      reasoningEffort?: z.infer<typeof ApiKeysReasoningEffortSchema>;
     },
   ) => Promise<void>;
   patchingId?: number | null;
@@ -47,34 +62,47 @@ function AgentModelPicker({
   apiKeyId,
   value,
   disabled,
+  isEditing,
   onChange,
 }: Readonly<{
   apiKeyId: number;
   value?: string;
   disabled?: boolean;
+  isEditing: boolean;
   onChange: (modelId: string) => void;
 }>) {
-  const modelsQuery = useQuery(
-    orpc.agent.models.queryOptions({ input: { apiKeyId } }),
-  );
-  const models = modelsQuery.data ?? [];
+  const { models, isLoading } = useAgentModels(apiKeyId);
   const hasModels = models.length > 0;
+  const persistedFallbackRef = useRef<string | null>(null);
+  const fallbackModelId = models[0]?.id;
+
+  useEffect(() => {
+    if (
+      !isEditing ||
+      value ||
+      !fallbackModelId ||
+      persistedFallbackRef.current
+    ) {
+      return;
+    }
+
+    persistedFallbackRef.current = fallbackModelId;
+    onChange(fallbackModelId);
+  }, [fallbackModelId, isEditing, onChange, value]);
 
   return (
     <div className="w-full min-w-0">
       <Select
-        value={value ?? models[0]?.id}
+        value={value ?? fallbackModelId}
         onValueChange={onChange}
-        disabled={disabled || modelsQuery.isLoading || !hasModels}
+        disabled={disabled || isLoading || !hasModels}
       >
         <SelectTrigger
           aria-label={`Model for API key #${apiKeyId}`}
           className="min-h-10 w-full"
         >
           <SelectValue
-            placeholder={
-              modelsQuery.isLoading ? "Loading models…" : "No compatible model"
-            }
+            placeholder={isLoading ? "Loading models…" : "No compatible model"}
           />
         </SelectTrigger>
         <SelectContent>
@@ -112,6 +140,7 @@ function KeyRow({
       label?: string | null;
       provider?: z.infer<typeof ApiKeysProviderSchema>;
       selectedModel?: string;
+      reasoningEffort?: z.infer<typeof ApiKeysReasoningEffortSchema>;
     },
   ) => Promise<void>;
 }>) {
@@ -146,16 +175,22 @@ function KeyRow({
           {index + 1}
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-bold text-content">
-          {entry.label || entry.provider}
+          {entry.label}
         </span>
-        {entry.label ? (
-          <span className="max-w-40 shrink-0 truncate rounded-lg bg-surface-raised px-2.5 py-1.5 font-mono text-xs text-content-muted">
-            {entry.provider}
-          </span>
-        ) : null}
+        <span className="max-w-40 shrink-0 truncate rounded-lg bg-surface-raised px-2.5 py-1.5 font-mono text-xs text-content-muted">
+          {entry.provider}
+        </span>
         {entry.selectedModel ? (
           <span className="max-w-56 truncate rounded-lg bg-surface-raised px-2.5 py-1.5 font-mono text-xs text-content-muted">
             {entry.selectedModel}
+          </span>
+        ) : null}
+        {entry.reasoningEffort ? (
+          <span
+            title="Reasoning effort"
+            className="max-w-32 shrink-0 truncate rounded-lg bg-system/14 px-2.5 py-1.5 font-mono text-xs font-bold text-system"
+          >
+            {entry.reasoningEffort}
           </span>
         ) : null}
         {onSelectActive ? (
@@ -292,6 +327,24 @@ function KeyRow({
                 </SelectContent>
               </Select>
             </div>
+            <label className="flex flex-col gap-1.5 text-xs font-semibold text-content-muted">
+              API key
+              <span className="relative block">
+                <input
+                  type="password"
+                  value="••••••••••••"
+                  disabled
+                  aria-label="API key cannot be changed"
+                  className="h-10 w-full cursor-not-allowed rounded-xl border border-border bg-surface-raised py-2 pr-48 pl-3 font-mono text-sm font-normal text-content disabled:opacity-45"
+                />
+                <span
+                  title="To change the API key, delete this key and add a new one."
+                  className="pointer-events-none absolute inset-y-0 right-3 flex max-w-[55%] items-center truncate text-xs font-semibold text-content-subtle"
+                >
+                  Edit unavailable for safety
+                </span>
+              </span>
+            </label>
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-content-muted">
                 Model
@@ -300,10 +353,40 @@ function KeyRow({
                 apiKeyId={entry.id}
                 value={entry.selectedModel ?? undefined}
                 disabled={isPatching}
+                isEditing={isEditing}
                 onChange={(model) =>
                   void onUpdate(entry.id, { selectedModel: model })
                 }
               />
+            </div>
+            <div className="flex min-w-40 flex-1 flex-col gap-1.5">
+              <span className="text-xs font-semibold text-content-muted">
+                Reasoning effort
+              </span>
+              <Select
+                value={entry.reasoningEffort}
+                disabled={isPatching}
+                onValueChange={(value) =>
+                  void onUpdate(entry.id, {
+                    reasoningEffort: value as z.infer<
+                      typeof ApiKeysReasoningEffortSchema
+                    >,
+                  })
+                }
+              >
+                <SelectTrigger
+                  aria-label="Reasoning effort"
+                  className="h-10 min-h-10"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -346,6 +429,13 @@ export function ApiKeySection({
   patchingId,
 }: ApiKeySectionProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [availableModels, setAvailableModels] = useState<z.infer<
+    typeof agentModelsOutputSchema
+  > | null>(null);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(
+    null,
+  );
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const {
@@ -353,21 +443,125 @@ export function ApiKeySection({
     register,
     reset,
     control,
+    setValue,
+    setError,
+    clearErrors,
+    watch,
     formState: { errors, isSubmitting },
-  } = useForm<z.input<typeof ApiKeysCreateInputSchema>>({
-    resolver: zodResolver(ApiKeysCreateInputSchema),
-    defaultValues: { provider: "GEMINI", label: "", key: "" },
+  } = useForm<z.input<typeof ApiKeysCreateFormSchema>>({
+    resolver: zodResolver(ApiKeysCreateFormSchema),
+    defaultValues: {
+      provider: "GEMINI",
+      label: "",
+      key: "",
+      selectedModel: "",
+      reasoningEffort: "default",
+    },
   });
+  const selectedProvider = watch("provider");
+  const apiKey = watch("key");
+  const newKeyLabel = watch("label");
+  const newKeyModel = watch("selectedModel");
+  const newKeyReasoningEffort = watch("reasoningEffort");
+  const { mutateAsync: checkAvailability, isPending: isCheckingAvailability } =
+    useMutation(orpc.apiKeys.checkAvailability.mutationOptions());
+  const modelPlaceholder = availableModels
+    ? "Choose model"
+    : "Provide API key first";
+  const availabilityRequestId = useRef(0);
 
-  async function handleAdd(input: z.infer<typeof ApiKeysCreateInputSchema>) {
+  useEffect(() => {
+    const requestId = ++availabilityRequestId.current;
+    setAvailableModels(null);
+    setAvailabilityError(null);
+    setValue("selectedModel", "");
+    clearErrors("selectedModel");
+
+    if (!isAdding || !apiKey.trim()) return;
+
+    const timeoutId = window.setTimeout(() => {
+      void checkAvailability({ provider: selectedProvider, key: apiKey })
+        .then((models) => {
+          if (requestId !== availabilityRequestId.current) return;
+
+          if (models.length === 0) {
+            setAvailabilityError("This API key has no available models.");
+            return;
+          }
+
+          setAvailableModels(models);
+        })
+        .catch((error) => {
+          if (requestId === availabilityRequestId.current) {
+            setAvailabilityError(
+              error instanceof Error &&
+                error.message === "This API key has already been added."
+                ? error.message
+                : "Could not verify this API key.",
+            );
+          }
+        });
+    }, 500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    apiKey,
+    checkAvailability,
+    clearErrors,
+    isAdding,
+    selectedProvider,
+    setValue,
+  ]);
+
+  async function handleAdd(input: z.infer<typeof ApiKeysCreateFormSchema>) {
     setSaveError(null);
 
-    try {
-      await onSave(input);
-      reset({ provider: "GEMINI", label: "", key: "" });
-    } catch {
-      setSaveError("Could not save this key. Please try again.");
+    if (!availableModels) {
+      return;
     }
+
+    const parsedInput = ApiKeysCreateInputSchema.safeParse(input);
+    if (!parsedInput.success) {
+      const selectedModelError = parsedInput.error.issues.find(
+        (issue) => issue.path[0] === "selectedModel",
+      );
+
+      if (selectedModelError) {
+        setError("selectedModel", { message: selectedModelError.message });
+      }
+      return;
+    }
+
+    try {
+      await onSave(parsedInput.data);
+      reset({
+        provider: "GEMINI",
+        label: "",
+        key: "",
+        selectedModel: "",
+        reasoningEffort: "default",
+      });
+      setIsAdding(false);
+    } catch (error) {
+      setSaveError(
+        error instanceof Error &&
+          error.message === "This API key has already been added."
+          ? error.message
+          : "Could not save this key. Please try again.",
+      );
+    }
+  }
+
+  function cancelAdd() {
+    reset({
+      provider: "GEMINI",
+      label: "",
+      key: "",
+      selectedModel: "",
+      reasoningEffort: "default",
+    });
+    setSaveError(null);
+    setIsAdding(false);
   }
 
   async function handleDelete(id: number) {
@@ -386,91 +580,30 @@ export function ApiKeySection({
 
   return (
     <section aria-labelledby={`${listLabel}-title`} className="w-full">
-      <h2
-        id={`${listLabel}-title`}
-        className="font-display text-lg font-extrabold tracking-tight text-content"
-      >
-        {title}
-      </h2>
-      <p className="mt-1 text-sm leading-6 text-content-muted">{description}</p>
-
-      <form
-        onSubmit={handleSubmit(handleAdd)}
-        className="mt-4 grid gap-2 sm:grid-cols-[12rem_12rem_minmax(0,1fr)_auto]"
-      >
-        <Controller
-          control={control}
-          name="provider"
-          render={({ field }) => (
-            <Select
-              value={field.value}
-              onValueChange={field.onChange}
-              disabled={isSubmitting}
-            >
-              <SelectTrigger
-                id={`${listLabel}-provider`}
-                aria-label="Provider"
-                className={`h-10 min-h-10 w-full ${focusRing}`}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem className="min-h-10 px-3" value="GEMINI">
-                  Gemini
-                </SelectItem>
-                <SelectItem className="min-h-10 px-3" value="OPENAI">
-                  OpenAI
-                </SelectItem>
-                <SelectItem className="min-h-10 px-3" value="ANTHROPIC">
-                  Claude
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        />
-        <input
-          aria-label="Label"
-          {...register("label")}
-          placeholder="Label (optional)"
-          maxLength={50}
-          className={`h-10 rounded-xl border border-border bg-surface-raised px-3 text-sm text-content placeholder:text-content-subtle ${focusRing}`}
-        />
-        {errors.provider ? (
-          <p className="text-sm text-red-300 sm:col-span-3">
-            {errors.provider.message}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2
+            id={`${listLabel}-title`}
+            className="font-display text-lg font-extrabold tracking-tight text-content"
+          >
+            {title}
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-content-muted">
+            {description}
           </p>
+        </div>
+        {!isAdding ? (
+          <button
+            type="button"
+            onClick={() => setIsAdding(true)}
+            disabled={isSubmitting}
+            className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-system px-4 text-xs font-bold text-on-system transition-colors hover:bg-system-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+          >
+            <Plus size={15} aria-hidden="true" />
+            Add key
+          </button>
         ) : null}
-        <label className="sr-only" htmlFor={`${listLabel}-key`}>
-          API key
-        </label>
-        <input
-          id={`${listLabel}-key`}
-          type="password"
-          {...register("key")}
-          placeholder={keyPlaceholder}
-          autoComplete="off"
-          className={`h-10 rounded-xl border border-border bg-surface-raised px-3 py-2 font-mono text-sm text-content placeholder:font-body placeholder:text-content-subtle ${focusRing}`}
-        />
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className={`inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-system px-4 py-2 text-xs font-bold text-on-system transition-colors hover:bg-system-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
-        >
-          <Plus size={15} aria-hidden="true" />
-          {isSubmitting ? "Saving…" : "Add key"}
-        </button>
-        {errors.key ? (
-          <p className="text-sm text-red-300 sm:col-span-3">
-            {errors.key.message}
-          </p>
-        ) : null}
-      </form>
-
-      {saveError ? (
-        <p role="alert" className="mt-3 text-sm text-red-300">
-          {saveError}
-        </p>
-      ) : null}
+      </div>
 
       {items.length ? (
         <ul className="mt-4 grid gap-2">
@@ -490,9 +623,226 @@ export function ApiKeySection({
         </ul>
       ) : (
         <p className="mt-4 rounded-xl border border-dashed border-border px-4 py-5 text-center text-sm text-content-subtle">
-          No keys yet. Add your first key above.
+          No keys yet. Add your first key.
         </p>
       )}
+      {isAdding ? (
+        <div className="mt-4 flex flex-col rounded-xl border border-border-subtle bg-canvas/45 px-3 py-2">
+          <div
+            aria-label="New API key preview"
+            className="flex flex-wrap items-center gap-2"
+          >
+            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-system/14 font-mono text-xs font-bold text-system">
+              {items.length + 1}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm font-bold text-content">
+              {newKeyLabel}
+            </span>
+            <span className="max-w-40 shrink-0 truncate rounded-lg bg-surface-raised px-2.5 py-1.5 font-mono text-xs text-content-muted">
+              {selectedProvider}
+            </span>
+            {newKeyModel ? (
+              <span className="max-w-56 truncate rounded-lg bg-surface-raised px-2.5 py-1.5 font-mono text-xs text-content-muted">
+                {newKeyModel}
+              </span>
+            ) : null}
+            <span
+              title="Reasoning effort"
+              className="max-w-32 shrink-0 truncate rounded-lg bg-system/14 px-2.5 py-1.5 font-mono text-xs font-bold text-system"
+            >
+              {newKeyReasoningEffort}
+            </span>
+          </div>
+          <form
+            onSubmit={handleSubmit(handleAdd)}
+            className="mt-3 flex flex-col gap-3 border-t border-border-subtle pt-3"
+          >
+            <label className="flex flex-col gap-1.5 text-xs font-semibold text-content-muted">
+              Label
+              <input
+                {...register("label")}
+                placeholder="Label (optional)"
+                maxLength={50}
+                disabled={isSubmitting}
+                className={`h-10 rounded-xl border border-border bg-surface-raised px-3 text-sm font-normal text-content placeholder:text-content-subtle disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+              />
+            </label>
+            {errors.label ? (
+              <p className="text-sm text-red-300">{errors.label.message}</p>
+            ) : null}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-content-muted">
+                Provider
+              </span>
+              <Controller
+                control={control}
+                name="provider"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger
+                      id={`${listLabel}-provider`}
+                      aria-label="Provider"
+                      className={`h-10 min-h-10 w-full ${focusRing}`}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem className="min-h-10 px-3" value="GEMINI">
+                        Gemini
+                      </SelectItem>
+                      <SelectItem className="min-h-10 px-3" value="OPENAI">
+                        OpenAI
+                      </SelectItem>
+                      <SelectItem className="min-h-10 px-3" value="ANTHROPIC">
+                        Claude
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            {errors.provider ? (
+              <p className="text-sm text-red-300">{errors.provider.message}</p>
+            ) : null}
+            <label className="flex flex-col gap-1.5 text-xs font-semibold text-content-muted">
+              API key
+              <span className="relative block">
+                <input
+                  id={`${listLabel}-key`}
+                  type="password"
+                  {...register("key")}
+                  placeholder={keyPlaceholder}
+                  autoComplete="off"
+                  disabled={isSubmitting}
+                  className={`h-10 min-w-0 w-full rounded-xl border border-border bg-surface-raised py-2 pr-40 pl-3 font-mono text-sm font-normal text-content placeholder:font-body placeholder:text-content-subtle disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+                />
+                {isCheckingAvailability ? (
+                  <span
+                    aria-live="polite"
+                    className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-content-muted"
+                  >
+                    Checking…
+                  </span>
+                ) : availabilityError ? (
+                  <span
+                    role="alert"
+                    title={availabilityError}
+                    className="pointer-events-none absolute inset-y-0 right-3 flex max-w-[45%] items-center truncate text-xs font-semibold text-red-300"
+                  >
+                    {availabilityError}
+                  </span>
+                ) : availableModels ? (
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-emerald-400">
+                    Available
+                  </span>
+                ) : null}
+              </span>
+            </label>
+            {errors.key ? (
+              <p className="text-sm text-red-300">{errors.key.message}</p>
+            ) : null}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-content-muted">
+                Model
+              </span>
+              <Controller
+                control={control}
+                name="selectedModel"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isSubmitting || !availableModels}
+                  >
+                    <SelectTrigger
+                      aria-label="Model"
+                      className={`h-10 min-h-10 ${
+                        availableModels ? "" : "cursor-not-allowed opacity-45"
+                      }`}
+                    >
+                      <SelectValue placeholder={modelPlaceholder} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(availableModels ?? []).map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          {model.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            {errors.selectedModel ? (
+              <p className="text-sm text-red-300">
+                {errors.selectedModel.message}
+              </p>
+            ) : null}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-content-muted">
+                Reasoning effort
+              </span>
+              <Controller
+                control={control}
+                name="reasoningEffort"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isSubmitting || !availableModels}
+                  >
+                    <SelectTrigger
+                      aria-label="Reasoning effort"
+                      className={`h-10 min-h-10 ${
+                        availableModels ? "" : "cursor-not-allowed opacity-45"
+                      }`}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Default</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            {errors.reasoningEffort ? (
+              <p className="text-sm text-red-300">
+                {errors.reasoningEffort.message}
+              </p>
+            ) : null}
+            {saveError ? (
+              <p role="alert" className="text-sm text-red-300">
+                {saveError}
+              </p>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`h-10 rounded-xl bg-system px-3 text-xs font-bold text-on-system disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+              >
+                {isSubmitting ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={cancelAdd}
+                disabled={isSubmitting}
+                className={`h-10 rounded-xl px-3 text-xs font-bold text-content-muted hover:text-content disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
       {deleteError ? (
         <p role="alert" className="mt-3 text-sm text-red-300">
           {deleteError}

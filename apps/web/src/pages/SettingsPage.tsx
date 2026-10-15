@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiKeysCreateInputSchema, ApiKeysProviderSchema } from "@repo/zod";
+import {
+  ApiKeysCreateInputSchema,
+  ApiKeysProviderSchema,
+  ApiKeysReasoningEffortSchema,
+} from "@repo/zod";
 import type { z } from "@repo/zod";
 import { ConversationPanel, UtilityHeader } from "../components/home";
 import { ApiKeySection } from "../components/settings/ApiKeySection";
@@ -73,6 +77,7 @@ export function SettingsPage() {
       label?: string | null;
       provider?: z.infer<typeof ApiKeysProviderSchema>;
       selectedModel?: string;
+      reasoningEffort?: z.infer<typeof ApiKeysReasoningEffortSchema>;
       isActive?: boolean;
     },
   ) {

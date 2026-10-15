@@ -17,5 +17,6 @@ import { OpenAiProvider } from './providers/openai.provider';
     OpenAiProvider,
     AnthropicProvider,
   ],
+  exports: [AgentProviderRegistry, AgentService],
 })
 export class AgentModule {}

@@ -54,15 +54,24 @@ export class GeminiProvider implements AgentProvider {
     apiKey,
     text,
     model,
+    reasoningEffort,
   }: {
     apiKey: string;
     text: string;
     model: string;
+    reasoningEffort: 'low' | 'medium' | 'high' | null;
   }) {
     const google = createGoogleGenerativeAI({ apiKey });
     const result = await generateText({
       model: google(model),
       prompt: text,
+      ...(reasoningEffort
+        ? {
+            providerOptions: {
+              google: { thinkingConfig: { thinkingLevel: reasoningEffort } },
+            },
+          }
+        : {}),
     });
 
     return toAgentChatResult(result.text, result.finishReason);

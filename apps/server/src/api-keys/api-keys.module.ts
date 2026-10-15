@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { CryptoModule } from '../crypto/crypto.module';
+import { AgentModule } from '../agent/agent.module';
 import { ApiKeysController } from './api-keys.controller';
 import { ApiKeysService } from './api-keys.service';
 
 @Module({
-  imports: [CryptoModule],
+  imports: [CryptoModule, AgentModule],
   controllers: [ApiKeysController],
   providers: [ApiKeysService],
 })

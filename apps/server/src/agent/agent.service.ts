@@ -5,6 +5,8 @@ import {
   agentModelsInputSchema,
   agentModelsOutputSchema,
   ApiKeysProviderSchema,
+  ApiKeysCheckAvailabilityInputSchema,
+  ApiKeysReasoningEffortSchema,
   z,
 } from '@repo/zod';
 import { db } from '@repo/db';
@@ -42,6 +44,7 @@ export class AgentService {
         provider: true,
         availableModels: true,
         modelsUpdatedAt: true,
+        reasoningEffort: true,
       },
     });
 
@@ -66,6 +69,7 @@ export class AgentService {
       provider: this.agentProviderRegistry.get(providerResult.data),
       availableModels: encryptedApiKey.availableModels,
       modelsUpdatedAt: encryptedApiKey.modelsUpdatedAt,
+      reasoningEffort: encryptedApiKey.reasoningEffort,
     };
   }
 
@@ -114,6 +118,23 @@ export class AgentService {
     }
   }
 
+  async checkAvailability(
+    { key, provider }: z.infer<typeof ApiKeysCheckAvailabilityInputSchema>,
+    userId: string,
+  ): Promise<z.infer<typeof agentModelsOutputSchema>> {
+    try {
+      return await this.agentProviderRegistry.get(provider).listModels(key);
+    } catch (error) {
+      this.logger.warn(
+        `API key availability check failed: provider=${provider}, userId=${userId}`,
+      );
+      throw new ORPCError('BAD_REQUEST', {
+        message: 'This API key could not load any available models.',
+        cause: error,
+      });
+    }
+  }
+
   private isModelUnavailableError(error: unknown) {
     if (!APICallError.isInstance(error)) return false;
 
@@ -158,10 +179,18 @@ export class AgentService {
     }
 
     try {
+      const reasoningEffort =
+        ApiKeysReasoningEffortSchema.safeParse(agentKey.reasoningEffort);
+      const requestedReasoningEffort =
+        reasoningEffort.success && reasoningEffort.data !== 'default'
+          ? reasoningEffort.data
+          : null;
+
       return await agentKey.provider.chat({
         apiKey: agentKey.apiKey,
         text,
         model,
+        reasoningEffort: requestedReasoningEffort,
       });
     } catch (error) {
       if (this.isModelUnavailableError(error)) {

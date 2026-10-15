@@ -93,6 +93,19 @@ enum UserStatus {
   OFFLINE
 }
 
+enum UserApiKeysReasoningEffort {
+  default
+  low
+  medium
+  high
+}
+
+enum UserApiKeysProvider {
+  GEMINI
+  OPENAI
+  ANTHROPIC
+}
+
 model Session {
   id        String   @id @unique @default(uuid())
   token     String   @unique
@@ -142,13 +155,14 @@ model Verification {
 
 model UserApiKeys {
   id              Int                @id @unique @default(autoincrement())
-  provider        String
+  provider        UserApiKeysProvider
   label           String?
   key             String
   userId          String
   availableModels Json?
   modelsUpdatedAt DateTime?
   selectedModel   String?
+  reasoningEffort UserApiKeysReasoningEffort @default(default)
   isActive        Boolean            @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -24,6 +24,13 @@ export class ApiKeysController {
     );
   }
 
+  @Implement(apiKeysContract.checkAvailability)
+  checkAvailability(@Session() session: UserSession) {
+    return implement(apiKeysContract.checkAvailability).handler(({ input }) =>
+      this.apiKeysService.checkAvailability(input, session.user.id),
+    );
+  }
+
   @Implement(apiKeysContract.patch)
   patch(@Session() session: UserSession) {
     return implement(apiKeysContract.patch).handler(({ input }) =>

@@ -1,12 +1,27 @@
 import { oc } from "@orpc/contract";
+import { agentModelsOutputSchema } from "./Agent.js";
 import { z } from "zod";
 
 export const ApiKeysProviderSchema = z.enum(["GEMINI", "OPENAI", "ANTHROPIC"]);
+
+export const ApiKeysReasoningEffortSchema = z.enum([
+  "default",
+  "low",
+  "medium",
+  "high",
+]);
 
 export const ApiKeysCreateInputSchema = z.object({
   key: z.string().min(1),
   provider: ApiKeysProviderSchema,
   label: z.string().trim().max(50).optional(),
+  selectedModel: z.string().trim().min(1),
+  reasoningEffort: ApiKeysReasoningEffortSchema,
+});
+
+export const ApiKeysCheckAvailabilityInputSchema = z.object({
+  key: z.string().min(1),
+  provider: ApiKeysProviderSchema,
 });
 
 export const ApiKeysCreateOutputSchema = z.object({
@@ -16,6 +31,7 @@ export const ApiKeysCreateOutputSchema = z.object({
   provider: z.string(),
   label: z.string().nullable(),
   selectedModel: z.string().nullable(),
+  reasoningEffort: ApiKeysReasoningEffortSchema,
   isActive: z.boolean(),
 });
 
@@ -25,13 +41,15 @@ export const ApiKeysPatchInputSchema = z
     provider: ApiKeysProviderSchema.optional(),
     label: z.string().trim().max(50).nullable().optional(),
     selectedModel: z.string().trim().min(1).nullable().optional(),
+    reasoningEffort: ApiKeysReasoningEffortSchema.optional(),
     isActive: z.boolean().optional(),
   })
   .refine(
-    ({ provider, label, selectedModel, isActive }) =>
+    ({ provider, label, selectedModel, reasoningEffort, isActive }) =>
       provider !== undefined ||
       label !== undefined ||
       selectedModel !== undefined ||
+      reasoningEffort !== undefined ||
       isActive !== undefined,
     { message: "Provide at least one field to update." },
   );
@@ -49,6 +67,10 @@ export const apiKeysContract = {
     .route({ method: "POST", path: "/api-keys" })
     .input(ApiKeysCreateInputSchema)
     .output(ApiKeysCreateOutputSchema),
+  checkAvailability: oc
+    .route({ method: "POST", path: "/api-keys/check-availability" })
+    .input(ApiKeysCheckAvailabilityInputSchema)
+    .output(agentModelsOutputSchema),
   findMany: oc
     .route({ method: "GET", path: "/api-keys" })
     .output(ApiKeysFindManyOutputSchema),

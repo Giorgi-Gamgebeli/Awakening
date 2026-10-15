@@ -2,6 +2,7 @@ import {
   agentChatOutputSchema,
   agentModelSchema,
   ApiKeysProviderSchema,
+  ApiKeysReasoningEffortSchema,
   z,
 } from '@repo/zod';
 
@@ -16,6 +17,7 @@ export type AgentProvider = {
     apiKey: string;
     text: string;
     model: string;
+    reasoningEffort: z.infer<typeof ApiKeysReasoningEffortSchema> | null;
   }): Promise<AgentChatResult>;
 };
 

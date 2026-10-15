@@ -47,15 +47,20 @@ export class AnthropicProvider implements AgentProvider {
     apiKey,
     text,
     model,
+    reasoningEffort,
   }: {
     apiKey: string;
     text: string;
     model: string;
+    reasoningEffort: 'low' | 'medium' | 'high' | null;
   }) {
     const anthropic = createAnthropic({ apiKey });
     const result = await generateText({
       model: anthropic(model),
       prompt: text,
+      ...(reasoningEffort
+        ? { providerOptions: { anthropic: { effort: reasoningEffort } } }
+        : {}),
     });
 
     return toAgentChatResult(result.text, result.finishReason);

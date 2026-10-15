@@ -38,15 +38,20 @@ export class OpenAiProvider implements AgentProvider {
     apiKey,
     text,
     model,
+    reasoningEffort,
   }: {
     apiKey: string;
     text: string;
     model: string;
+    reasoningEffort: 'low' | 'medium' | 'high' | null;
   }) {
     const openai = createOpenAI({ apiKey });
     const result = await generateText({
       model: openai(model),
       prompt: text,
+      ...(reasoningEffort
+        ? { providerOptions: { openai: { reasoningEffort } } }
+        : {}),
     });
 
     return toAgentChatResult(result.text, result.finishReason);

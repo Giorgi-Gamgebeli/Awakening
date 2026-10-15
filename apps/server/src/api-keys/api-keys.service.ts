@@ -5,19 +5,28 @@ import {
   ApiKeysPatchInputSchema,
   ApiKeysPatchOutputSchema,
   ApiKeysCreateInputSchema,
+  ApiKeysCheckAvailabilityInputSchema,
   ApiKeysDeleteSchema,
   z,
 } from '@repo/zod';
 import { CryptoService } from '../crypto/crypto.service';
+import { AgentService } from '../agent/agent.service';
 
 @Injectable()
 export class ApiKeysService {
-  constructor(private readonly cryptoService: CryptoService) {}
+  constructor(
+    private readonly cryptoService: CryptoService,
+    private readonly agentService: AgentService,
+  ) {}
 
   async create(
-    { key, provider, label }: z.infer<typeof ApiKeysCreateInputSchema>,
+    { key, provider, label, selectedModel, reasoningEffort }: z.infer<
+      typeof ApiKeysCreateInputSchema
+    >,
     userId: string,
   ) {
+    await this.assertKeyIsNotDuplicate(key, userId);
+
     const encryptedKey = this.cryptoService.encrypt(key);
 
     // The first key becomes active so the AI has a default.
@@ -31,6 +40,8 @@ export class ApiKeysService {
         key: encryptedKey,
         provider,
         label,
+        selectedModel,
+        reasoningEffort,
         userId,
         isActive: !hasActiveKey,
       },
@@ -39,6 +50,7 @@ export class ApiKeysService {
         provider: true,
         label: true,
         selectedModel: true,
+        reasoningEffort: true,
         isActive: true,
       },
     });
@@ -46,6 +58,31 @@ export class ApiKeysService {
     return {
       ...apiKey,
     };
+  }
+
+  private async assertKeyIsNotDuplicate(key: string, userId: string) {
+    const existingKeys = await db.userApiKeys.findMany({
+      where: { userId },
+      select: { key: true },
+    });
+
+    if (
+      existingKeys.some(
+        (existingKey) => this.cryptoService.decrypt(existingKey.key) === key,
+      )
+    ) {
+      throw new ORPCError('CONFLICT', {
+        message: 'This API key has already been added.',
+      });
+    }
+  }
+
+  async checkAvailability(
+    { key, provider }: z.infer<typeof ApiKeysCheckAvailabilityInputSchema>,
+    userId: string,
+  ) {
+    await this.assertKeyIsNotDuplicate(key, userId);
+    return await this.agentService.checkAvailability({ key, provider }, userId);
   }
 
   async findMany(userId: string) {
@@ -58,6 +95,7 @@ export class ApiKeysService {
         provider: true,
         label: true,
         selectedModel: true,
+        reasoningEffort: true,
         isActive: true,
       },
     });
@@ -68,6 +106,7 @@ export class ApiKeysService {
       provider,
       label,
       selectedModel,
+      reasoningEffort,
       isActive,
       id,
     }: z.infer<typeof ApiKeysPatchInputSchema>,
@@ -103,6 +142,8 @@ export class ApiKeysService {
           provider,
           label,
           isActive,
+          reasoningEffort:
+            provider === undefined ? reasoningEffort : 'default',
           availableModels: provider === undefined ? undefined : Prisma.DbNull,
           modelsUpdatedAt: provider === undefined ? undefined : null,
           // A new provider invalidates the previously picked model.
@@ -113,6 +154,7 @@ export class ApiKeysService {
           provider: true,
           label: true,
           selectedModel: true,
+          reasoningEffort: true,
           isActive: true,
         },
       });
