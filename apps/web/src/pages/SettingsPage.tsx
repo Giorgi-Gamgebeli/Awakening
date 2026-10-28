@@ -156,7 +156,7 @@ export function SettingsPage() {
 
                 <ApiKeySection
                   title="API keys"
-                  description="Add a provider key, select which one powers the AI, and choose a model for each key."
+                  description="Add a provider key, select which one powers the AI, and choose a model for each key. A Gemini key also powers Google voice replies."
                   items={apiKeys}
                   onSave={createApiKey}
                   onDelete={deleteApiKey}

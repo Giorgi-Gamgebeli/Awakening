@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Send } from "lucide-react";
+import { Mic, MicOff, Plus, Send, Volume2, VolumeX } from "lucide-react";
 import { ApiKeysProviderSchema } from "@repo/zod";
 import {
   ConversationPanel,
@@ -10,7 +10,17 @@ import {
 } from "../components/home";
 import { MessageBubble } from "../components/home/MessageBubble";
 import type { Message } from "../components/home/types";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { orpc } from "../lib/orpc";
+import { useSpeechRecognition, useSpeechSynthesis } from "../hooks/useVoice";
 import "./HomePage.css";
 
 const aiFriend = {
@@ -22,6 +32,19 @@ const aiFriend = {
 } as const;
 
 type LocalMessage = Message & { pending?: boolean };
+
+const voiceOutputPreferenceKey = "ai-voice-output";
+
+function getInitialVoiceOutput() {
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = window.localStorage.getItem(voiceOutputPreferenceKey);
+    if (stored !== null) return stored === "true";
+  } catch {
+    // Storage can be unavailable in private modes; fall back to the default.
+  }
+  return true;
+}
 
 export function AiPage() {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
@@ -80,6 +103,51 @@ export function AiPage() {
 
   const messages = [...persistedMessages, ...localMessages];
   const canSend = Boolean(selectedApiKey && storedModelId && prompt.trim());
+  const hasGeminiKey = (apiKeysQuery.data ?? []).some(
+    (apiKey) => apiKey.provider === "GEMINI",
+  );
+  const speechOutput = useSpeechSynthesis({
+    geminiAvailable: hasGeminiKey,
+  });
+  const cancelSpeech = speechOutput.cancel;
+  const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(
+    getInitialVoiceOutput,
+  );
+  const speechInput = useSpeechRecognition({
+    onTranscript(text) {
+      if (selectedApiKey && storedModelId && !chatMutation.isPending) {
+        sendMessage(text);
+        return;
+      }
+      setPrompt((current) =>
+        current.trim() ? `${current.trim()} ${text}` : text,
+      );
+    },
+  });
+  const naturalVoices = speechOutput.voices.filter(
+    (voice) => voice.engine === "browser" && voice.natural,
+  );
+  const standardVoices = speechOutput.voices.filter(
+    (voice) => voice.engine === "browser" && !voice.natural,
+  );
+  const googleVoices = speechOutput.voices.filter(
+    (voice) => voice.engine === "gemini",
+  );
+  const edgeVoices = speechOutput.voices.filter(
+    (voice) => voice.engine === "edge",
+  );
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        voiceOutputPreferenceKey,
+        String(voiceOutputEnabled),
+      );
+    } catch {
+      // Ignore storage failures; the preference still applies this session.
+    }
+    if (!voiceOutputEnabled) cancelSpeech();
+  }, [voiceOutputEnabled, cancelSpeech]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -111,11 +179,32 @@ export function AiPage() {
     navigate("/home/ai/new");
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function handleVoiceInput() {
+    if (speechInput.isListening) {
+      speechInput.stop();
+      return;
+    }
+    speechOutput.cancel();
+    speechInput.start();
+  }
 
-    const text = prompt.trim();
-    if (!selectedApiKey || !storedModelId || !text) return;
+  function handleVoiceChange(voiceId: string) {
+    speechOutput.setVoice(voiceId);
+    speechOutput.speak(
+      voiceId.startsWith("edge:") || voiceId.startsWith("gemini:")
+        ? "გამარჯობა, ასე ჟღერს ჩემი ხმა."
+        : "Hi, this is how I will sound when I reply.",
+    );
+  }
+
+  function sendMessage(rawText: string) {
+    const text = rawText.trim();
+    if (!selectedApiKey || !storedModelId || !text || chatMutation.isPending) {
+      return;
+    }
+
+    speechInput.stop();
+    speechOutput.cancel();
 
     const optimisticId = crypto.randomUUID();
     setLocalMessages((items) => [
@@ -133,6 +222,12 @@ export function AiPage() {
       },
       {
         onSuccess(response) {
+          const replyText =
+            response.status === "success" ? response.text : response.message;
+          if (voiceOutputEnabled && replyText) {
+            speechOutput.speak(replyText);
+          }
+
           // Backend is source of truth: adopt canonical session id, then
           // reconcile local state against persisted history.
           navigate(`/home/ai/${response.sessionId}`, { replace: true });
@@ -147,6 +242,11 @@ export function AiPage() {
         },
       },
     );
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    sendMessage(prompt);
   }
 
   useEffect(() => {
@@ -186,6 +286,35 @@ export function AiPage() {
           className="home-main rounded-tl-2xl flex min-w-0 flex-1 flex-col"
         >
           <UtilityHeader title="System" {...mobileNavigation}>
+            <button
+              type="button"
+              onClick={() => setVoiceOutputEnabled((enabled) => !enabled)}
+              disabled={!speechOutput.supported}
+              className={`grid size-11 place-items-center rounded-xl transition-colors hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-45 ${
+                voiceOutputEnabled
+                  ? "text-system"
+                  : "text-content-subtle hover:text-content"
+              } ${focusRing}`}
+              aria-pressed={voiceOutputEnabled}
+              aria-label={
+                voiceOutputEnabled
+                  ? "Turn off spoken replies"
+                  : "Turn on spoken replies"
+              }
+              title={
+                speechOutput.supported
+                  ? voiceOutputEnabled
+                    ? "Spoken replies on"
+                    : "Spoken replies off"
+                  : "Spoken replies are not supported in this browser"
+              }
+            >
+              {voiceOutputEnabled ? (
+                <Volume2 size={18} aria-hidden="true" />
+              ) : (
+                <VolumeX size={18} aria-hidden="true" />
+              )}
+            </button>
             <button
               type="button"
               onClick={handleNewChat}
@@ -279,6 +408,39 @@ export function AiPage() {
                       className="min-w-0 flex-1 rounded-xl border border-border bg-surface-raised px-4 py-3 text-sm text-content placeholder:text-content-subtle disabled:cursor-not-allowed disabled:opacity-70"
                     />
                     <button
+                      type="button"
+                      onClick={handleVoiceInput}
+                      disabled={
+                        !storedModelId ||
+                        chatMutation.isPending ||
+                        !speechInput.supported
+                      }
+                      className={`grid size-12 shrink-0 place-items-center rounded-xl border transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${focusRing} ${
+                        speechInput.isListening
+                          ? "border-danger bg-danger/15 text-danger"
+                          : "border-border bg-surface-raised text-content-muted hover:text-content"
+                      }`}
+                      aria-pressed={speechInput.isListening}
+                      aria-label={
+                        speechInput.isListening
+                          ? "Stop voice input"
+                          : "Start voice input"
+                      }
+                      title={
+                        speechInput.supported
+                          ? speechInput.isListening
+                            ? "Stop listening"
+                            : "Speak your message"
+                          : "Voice input is not supported in this browser"
+                      }
+                    >
+                      {speechInput.isListening ? (
+                        <MicOff size={18} aria-hidden="true" />
+                      ) : (
+                        <Mic size={18} aria-hidden="true" />
+                      )}
+                    </button>
+                    <button
                       type="submit"
                       disabled={!canSend || chatMutation.isPending}
                       className={`grid size-12 shrink-0 place-items-center rounded-xl bg-system text-on-system disabled:cursor-not-allowed disabled:opacity-45 ${focusRing}`}
@@ -292,6 +454,102 @@ export function AiPage() {
                       Model: {selectedModel?.label ?? storedModelId ?? "None"}
                     </span>
                     <span>Effort: {selectedApiKey.reasoningEffort}</span>
+                    {voiceOutputEnabled ? (
+                      speechOutput.voices.length ? (
+                        <div className="flex items-center gap-1.5">
+                          <span>Voice</span>
+                          <Select
+                            value={speechOutput.selectedVoice?.id ?? ""}
+                            onValueChange={handleVoiceChange}
+                          >
+                            <SelectTrigger
+                              aria-label="Reply voice"
+                              className="h-8 min-h-8 w-auto max-w-48 gap-1 rounded-lg px-2 text-xs sm:max-w-64 [&>span]:truncate"
+                            >
+                              <SelectValue placeholder="System default" />
+                            </SelectTrigger>
+                            <SelectContent className="max-w-80">
+                              {googleVoices.length ? (
+                                <SelectGroup>
+                                  <SelectLabel className="text-content-muted">
+                                    Georgian · Google (best quality)
+                                  </SelectLabel>
+                                  {googleVoices.map((voice) => (
+                                    <SelectItem key={voice.id} value={voice.id}>
+                                      {voice.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              ) : null}
+                              {edgeVoices.length ? (
+                                <SelectGroup>
+                                  <SelectLabel className="text-content-muted">
+                                    Georgian · Edge (faster)
+                                  </SelectLabel>
+                                  {edgeVoices.map((voice) => (
+                                    <SelectItem key={voice.id} value={voice.id}>
+                                      {voice.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              ) : null}
+                              {naturalVoices.length ? (
+                                <SelectGroup>
+                                  <SelectLabel className="text-content-muted">
+                                    Natural
+                                  </SelectLabel>
+                                  {naturalVoices.map((voice) => (
+                                    <SelectItem key={voice.id} value={voice.id}>
+                                      {voice.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              ) : null}
+                              {standardVoices.length ? (
+                                <SelectGroup>
+                                  <SelectLabel className="text-content-muted">
+                                    Standard
+                                  </SelectLabel>
+                                  {standardVoices.map((voice) => (
+                                    <SelectItem key={voice.id} value={voice.id}>
+                                      {voice.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              ) : null}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : (
+                        <span>Voice: System default</span>
+                      )
+                    ) : null}
+                    {speechInput.isListening ? (
+                      <span
+                        className="font-semibold text-danger"
+                        aria-live="polite"
+                      >
+                        Listening
+                        {speechInput.interimText
+                          ? `: ${speechInput.interimText}`
+                          : "…"}
+                      </span>
+                    ) : null}
+                    {speechOutput.isSpeaking ? (
+                      <span className="font-semibold text-system">
+                        Speaking…
+                      </span>
+                    ) : null}
+                    {speechInput.error ? (
+                      <span role="alert" className="text-danger">
+                        {speechInput.error}
+                      </span>
+                    ) : null}
+                    {speechOutput.error ? (
+                      <span role="alert" className="text-danger">
+                        {speechOutput.error}
+                      </span>
+                    ) : null}
                   </div>
                 </form>
               </section>

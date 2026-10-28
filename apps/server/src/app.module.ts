@@ -14,6 +14,7 @@ import { ApiKeysModule } from './api-keys/api-keys.module';
 import { CryptoModule } from './crypto/crypto.module';
 import { AgentModule } from './agent/agent.module';
 import { CalendarModule } from './calendar/calendar.module';
+import { TtsModule } from './tts/tts.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { CalendarModule } from './calendar/calendar.module';
     CryptoModule,
     AgentModule,
     CalendarModule,
+    TtsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
