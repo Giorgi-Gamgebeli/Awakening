@@ -13,6 +13,7 @@ import { UsersModule } from './users/users.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { CryptoModule } from './crypto/crypto.module';
 import { AgentModule } from './agent/agent.module';
+import { CalendarModule } from './calendar/calendar.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AgentModule } from './agent/agent.module';
     ApiKeysModule,
     CryptoModule,
     AgentModule,
+    CalendarModule,
   ],
   controllers: [AppController],
   providers: [AppService],

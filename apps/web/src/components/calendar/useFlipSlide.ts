@@ -18,8 +18,8 @@ export function useFlipSlide(eventsVersion: unknown) {
     const root = rootRef.current;
     if (!root) return;
     const map = new Map<string, DOMRect[]>();
-    root.querySelectorAll<HTMLElement>("[data-planner-id]").forEach((el) => {
-      const id = el.dataset["plannerId"];
+    root.querySelectorAll<HTMLElement>("[data-calendar-id]").forEach((el) => {
+      const id = el.dataset["calendarId"];
       if (!id) return;
       const list = map.get(id) ?? [];
       list.push(el.getBoundingClientRect());
@@ -35,8 +35,8 @@ export function useFlipSlide(eventsVersion: unknown) {
     if (!root || from.size === 0) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    root.querySelectorAll<HTMLElement>("[data-planner-id]").forEach((el) => {
-      const id = el.dataset["plannerId"];
+    root.querySelectorAll<HTMLElement>("[data-calendar-id]").forEach((el) => {
+      const id = el.dataset["calendarId"];
       if (!id) return;
       const rects = from.get(id);
       const prev = rects?.shift();

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, NavLink } from "react-router";
 import {
   Apple,
@@ -6,9 +7,12 @@ import {
   Bot,
   CalendarDays,
   MessageCircle,
+  Plus,
+  Pin,
   UsersRound,
 } from "lucide-react";
 import { focusRing, groups } from "./constants";
+import { orpc } from "../../lib/orpc";
 
 type ConversationPanelProps = Readonly<{
   mobileOpen: boolean;
@@ -20,6 +24,12 @@ export function ConversationPanel({
   onClose,
 }: ConversationPanelProps) {
   const firstNavigationItemRef = useRef<HTMLAnchorElement>(null);
+  const sessionsQuery = useQuery(
+    orpc.agent.sessions.list.queryOptions({ input: { limit: 30 } }),
+  );
+  const pinnedSessions = (sessionsQuery.data?.items ?? []).filter(
+    (session) => session.isPinned,
+  );
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -54,7 +64,7 @@ export function ConversationPanel({
         <nav className="flex flex-col gap-1 px-3 py-4" aria-label="Workspace">
           <NavLink
             ref={firstNavigationItemRef}
-            to="/home/planner"
+            to="/home/calendar"
             onClick={onClose}
             className={({ isActive }) =>
               `flex min-h-12 w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors active:scale-[0.99] ${focusRing} ${
@@ -65,7 +75,7 @@ export function ConversationPanel({
             }
           >
             <CalendarDays size={18} aria-hidden="true" />
-            Planner
+            Calendar
           </NavLink>
           <button
             type="button"
@@ -81,20 +91,55 @@ export function ConversationPanel({
             <NotebookPen size={18} aria-hidden="true" />
             Notes
           </button>
-          <NavLink
-            to="/home/ai"
-            onClick={onClose}
-            className={({ isActive }) =>
-              `flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors active:scale-[0.99] ${focusRing} ${
-                isActive
-                  ? "home-selected-surface text-content shadow-[inset_3px_0_0_var(--color-system)]"
-                  : "text-content-muted hover:bg-surface-raised hover:text-content"
-              }`
-            }
-          >
-            <Bot size={18} aria-hidden="true" />
-            System
-          </NavLink>
+          <div className="group relative min-h-12">
+            <NavLink
+              to="/home/ai"
+              onClick={onClose}
+              className={({ isActive }) =>
+                `flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 pr-12 text-sm font-semibold transition-colors active:scale-[0.99] ${focusRing} ${
+                  isActive
+                    ? "home-selected-surface text-content shadow-[inset_3px_0_0_var(--color-system)]"
+                    : "text-content-muted hover:bg-surface-raised hover:text-content"
+                }`
+              }
+            >
+              <Bot size={18} aria-hidden="true" />
+              System
+            </NavLink>
+            <Link
+              to="/home/ai/new"
+              onClick={onClose}
+              className={`absolute top-1/2 right-1 grid size-10 -translate-y-1/2 place-items-center rounded-xl text-content-subtle opacity-0 transition-[opacity,color,background-color] hover:bg-surface-raised hover:text-system group-hover:opacity-100 group-focus-within:opacity-100 active:scale-[0.99] ${focusRing}`}
+              aria-label="Start a new system chat"
+              title="New system chat"
+            >
+              <Plus size={18} aria-hidden="true" />
+            </Link>
+          </div>
+          {pinnedSessions.length ? (
+            <div
+              className="ml-4 border-l border-border-subtle py-1 pl-2"
+              aria-label="Pinned system sessions"
+            >
+              {pinnedSessions.map((session) => (
+                <NavLink
+                  key={session.id}
+                  to={`/home/ai/${session.id}`}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex min-h-10 items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors ${focusRing} ${
+                      isActive
+                        ? "home-selected-surface font-semibold text-content"
+                        : "text-content-muted hover:bg-surface-raised hover:text-content"
+                    }`
+                  }
+                >
+                  <Pin size={14} className="shrink-0 text-system" aria-hidden="true" />
+                  <span className="truncate">{session.title}</span>
+                </NavLink>
+              ))}
+            </div>
+          ) : null}
           <NavLink
             to="/home/friends"
             end

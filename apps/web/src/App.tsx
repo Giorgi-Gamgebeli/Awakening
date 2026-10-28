@@ -4,8 +4,9 @@ import { SocketProvider } from "./context/SocketContext";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
-import PlannerPage from "./pages/PlannerPage";
+import CalendarPage from "./pages/CalendarPage";
 import { AiPage } from "./pages/AiPage";
+import { AiSessionsPage } from "./pages/AiSessionsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import {
   authOnlyMiddleware,
@@ -58,11 +59,19 @@ const router = createBrowserRouter([
         element: <HomePage />,
       },
       {
-        path: "planner",
-        element: <PlannerPage />,
+        path: "calendar",
+        element: <CalendarPage />,
       },
       {
         path: "ai",
+        element: <AiSessionsPage />,
+      },
+      {
+        path: "ai/new",
+        element: <AiPage />,
+      },
+      {
+        path: "ai/:sessionId",
         element: <AiPage />,
       },
       {

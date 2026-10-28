@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   DateSelectInfo,
   EventClickInfo,
@@ -14,35 +15,65 @@ import "@fullcalendar/react/themes/classic/theme.css";
 import "@fullcalendar/react/themes/classic/palette.css";
 import { ConversationPanel, UtilityHeader } from "../components/home";
 import { focusRing } from "../components/home/constants";
-import { PlannerCalendar } from "../components/planner/PlannerCalendar";
-import { EventDialog, type DialogState } from "../components/planner/EventDialog";
-import { useFlipSlide } from "../components/planner/useFlipSlide";
+import { CalendarView } from "../components/calendar/CalendarView";
+import {
+  EventDialog,
+  type DialogState,
+} from "../components/calendar/EventDialog";
+import { useFlipSlide } from "../components/calendar/useFlipSlide";
 import {
   CATEGORY_META,
   IMPORTANCE_META,
   type Category,
   type EventDraft,
   type Importance,
-  type PlannerEvent,
-} from "../components/planner/types";
-import {
-  createId,
-  loadEvents,
-  saveEvents,
-  shiftCategoryFutureByDays,
-  shiftEventByDays,
-  shiftIsoByDays,
-  skipOccurrence,
-} from "../components/planner/store";
-import "./PlannerPage.css";
+  type CalendarEvent,
+} from "../components/calendar/types";
+import { shiftIsoByDays } from "../components/calendar/store";
+import { orpc } from "../lib/orpc";
+import "./CalendarPage.css";
 import "./HomePage.css";
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_META) as Category[];
 
-export default function PlannerPage() {
+function toIso(value: Date | string) {
+  return new Date(value).toISOString();
+}
+
+export default function CalendarPage() {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
-  const [events, setEvents] = useState<PlannerEvent[]>(() => loadEvents());
+  const queryClient = useQueryClient();
+  const calendarEventsQuery = useQuery({
+    ...orpc.calendarEvents.list.queryOptions({ input: {} }),
+    refetchInterval: 5_000,
+  });
+  const calendarEventsQueryKey = orpc.calendarEvents.list.queryKey({ input: {} });
+  const createEventMutation = useMutation(
+    orpc.calendarEvents.create.mutationOptions(),
+  );
+  const patchEventMutation = useMutation(
+    orpc.calendarEvents.patch.mutationOptions(),
+  );
+  const deleteEventMutation = useMutation(
+    orpc.calendarEvents.delete.mutationOptions(),
+  );
+  const events = useMemo<CalendarEvent[]>(
+    () =>
+      (calendarEventsQuery.data ?? []).map((event) => ({
+        id: event.id,
+        title: event.title,
+        start: toIso(event.startAt),
+        end: toIso(event.endAt),
+        allDay: event.allDay,
+        importance: event.importance,
+        category: event.category,
+        notes: event.notes ?? undefined,
+        recurrence: event.recurrence,
+        exdates: event.excludedStarts.map(toIso),
+      })),
+    [calendarEventsQuery.data],
+  );
   const { rootRef: calendarRootRef, snapshot } = useFlipSlide(events);
   const [visibleCategories, setVisibleCategories] = useState<Set<Category>>(
     () => new Set(ALL_CATEGORIES),
@@ -51,17 +82,17 @@ export default function PlannerPage() {
   const [dialog, setDialog] = useState<DialogState | null>(null);
 
   useEffect(() => {
-    document.title = "Planner | Awakening";
+    document.title = "Calendar | Awakening";
   }, []);
-
-  useEffect(() => {
-    saveEvents(events);
-  }, [events]);
 
   const closeMobilePanel = useCallback(() => {
     setMobilePanelOpen(false);
     requestAnimationFrame(() => mobileMenuButtonRef.current?.focus());
   }, []);
+
+  function refreshCalendarEvents() {
+    return queryClient.invalidateQueries({ queryKey: calendarEventsQueryKey });
+  }
 
   const toggleCategory = useCallback((category: Category) => {
     setVisibleCategories((prev) => {
@@ -133,18 +164,27 @@ export default function PlannerPage() {
         const oldOcc = arg.oldEvent.start?.getTime() ?? 0;
         const newOcc = arg.event.start?.getTime() ?? 0;
         const deltaDays = Math.round((newOcc - oldOcc) / 86_400_000);
-        setEvents((prev) => shiftEventByDays(prev, base.id, deltaDays));
+        patchEventMutation.mutate(
+          {
+            id: base.id,
+            startAt: new Date(shiftIsoByDays(base.start, deltaDays)),
+            endAt: new Date(shiftIsoByDays(base.end, deltaDays)),
+          },
+          { onSuccess: () => void refreshCalendarEvents() },
+        );
       } else {
-        setEvents((prev) =>
-          prev.map((e) =>
-            e.id === base.id
-              ? { ...e, start: newStart, end: newEnd, allDay: arg.event.allDay }
-              : e,
-          ),
+        patchEventMutation.mutate(
+          {
+            id: base.id,
+            startAt: new Date(newStart),
+            endAt: new Date(newEnd),
+            allDay: arg.event.allDay,
+          },
+          { onSuccess: () => void refreshCalendarEvents() },
         );
       }
     },
-    [events],
+    [events, patchEventMutation],
   );
 
   const handleResize = useCallback(
@@ -161,19 +201,18 @@ export default function PlannerPage() {
         return;
       }
       // Resizing a recurring occurrence changes the series duration.
-      setEvents((prev) =>
-        prev.map((e) =>
-          e.id === base.id
-            ? {
-                ...e,
-                start: base.recurrence === "none" ? newStart : e.start,
-                end: newEnd,
-              }
-            : e,
-        ),
+      patchEventMutation.mutate(
+        {
+          id: base.id,
+          ...(base.recurrence === "none"
+            ? { startAt: new Date(newStart) }
+            : {}),
+          endAt: new Date(newEnd),
+        },
+        { onSuccess: () => void refreshCalendarEvents() },
       );
     },
-    [events],
+    [events, patchEventMutation],
   );
 
   const handleSave = useCallback(
@@ -181,59 +220,69 @@ export default function PlannerPage() {
       if (!dialog) return;
       snapshot();
       if (dialog.mode === "create") {
-        setEvents((prev) => [
-          ...prev,
+        createEventMutation.mutate(
           {
-            id: createId(),
             title: draft.title.trim() || "Untitled",
-            start: draft.start,
-            end: draft.end,
+            startAt: new Date(draft.start),
+            endAt: new Date(draft.end),
             allDay: draft.allDay,
-            importance: draft.importance satisfies Importance,
-            category: draft.category satisfies Category,
-            notes: draft.notes,
+            importance: draft.importance,
+            category: draft.category,
+            notes: draft.notes || null,
             recurrence: draft.recurrence,
           },
-        ]);
+          { onSuccess: () => void refreshCalendarEvents() },
+        );
       } else if (dialog.eventId) {
         const id = dialog.eventId;
-        setEvents((prev) =>
-          prev.map((e) =>
-            e.id === id
-              ? {
-                  ...e,
-                  title: draft.title.trim() || "Untitled",
-                  start: draft.start,
-                  end: draft.end,
-                  allDay: draft.allDay,
-                  importance: draft.importance,
-                  category: draft.category,
-                  notes: draft.notes,
-                  recurrence: draft.recurrence,
-                }
-              : e,
-          ),
+        patchEventMutation.mutate(
+          {
+            id,
+            title: draft.title.trim() || "Untitled",
+            startAt: new Date(draft.start),
+            endAt: new Date(draft.end),
+            allDay: draft.allDay,
+            importance: draft.importance,
+            category: draft.category,
+            notes: draft.notes || null,
+            recurrence: draft.recurrence,
+          },
+          { onSuccess: () => void refreshCalendarEvents() },
         );
       }
       setDialog(null);
     },
-    [dialog, snapshot],
+    [createEventMutation, dialog, patchEventMutation, snapshot],
   );
 
   const handleDelete = useCallback(() => {
     if (!dialog?.eventId) return;
     const id = dialog.eventId;
     snapshot();
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+    deleteEventMutation.mutate(
+      { id },
+      {
+        onSuccess: () => void refreshCalendarEvents(),
+      },
+    );
     setDialog(null);
-  }, [dialog, snapshot]);
+  }, [deleteEventMutation, dialog, snapshot]);
 
   const handleShiftDays = useCallback(
     (days: number) => {
       if (!dialog?.eventId) return;
       const id = dialog.eventId;
+      const event = events.find((item) => item.id === id);
+      if (!event) return;
       snapshot();
-      setEvents((prev) => shiftEventByDays(prev, id, days));
+      patchEventMutation.mutate(
+        {
+          id,
+          startAt: new Date(shiftIsoByDays(event.start, days)),
+          endAt: new Date(shiftIsoByDays(event.end, days)),
+        },
+        { onSuccess: () => void refreshCalendarEvents() },
+      );
       setDialog((d) =>
         d
           ? {
@@ -247,23 +296,45 @@ export default function PlannerPage() {
           : d,
       );
     },
-    [dialog, snapshot],
+    [dialog, events, patchEventMutation, snapshot],
   );
 
   const handleSkipOccurrence = useCallback(() => {
     if (!dialog?.eventId || !dialog.occurrenceStartIso) return;
+    const event = events.find((item) => item.id === dialog.eventId);
+    if (!event) return;
     snapshot();
-    setEvents((prev) =>
-      skipOccurrence(prev, dialog.eventId!, dialog.occurrenceStartIso!),
+    patchEventMutation.mutate(
+      {
+        id: event.id,
+        excludedStarts: [
+          ...(event.exdates ?? []),
+          dialog.occurrenceStartIso,
+        ].map((value) => new Date(value)),
+      },
+      { onSuccess: () => void refreshCalendarEvents() },
     );
     setDialog(null);
-  }, [dialog, snapshot]);
+  }, [dialog, events, patchEventMutation, snapshot]);
 
   /** Recovery: push all future workouts 1 day later. */
   const handleRecoverWorkouts = useCallback(() => {
     snapshot();
-    setEvents((prev) => shiftCategoryFutureByDays(prev, "workout", 1));
-  }, [snapshot]);
+    for (const event of events) {
+      if (
+        event.category !== "workout" ||
+        (event.recurrence === "none" && new Date(event.start) < new Date())
+      ) {
+        continue;
+      }
+      patchEventMutation.mutate({
+        id: event.id,
+        startAt: new Date(shiftIsoByDays(event.start, 1)),
+        endAt: new Date(shiftIsoByDays(event.end, 1)),
+      });
+    }
+    void refreshCalendarEvents();
+  }, [events, patchEventMutation, snapshot]);
 
   /** Snapshot positions at drag/resize start so the drop glides home. */
   const handleMoveStart = useCallback(
@@ -281,15 +352,19 @@ export default function PlannerPage() {
 
   const legend = useMemo(
     () =>
-      (Object.entries(IMPORTANCE_META) as [Importance, { label: string; color: string }][])
-        .map(([key, meta]) => ({ key, ...meta })),
+      (
+        Object.entries(IMPORTANCE_META) as [
+          Importance,
+          { label: string; color: string },
+        ][]
+      ).map(([key, meta]) => ({ key, ...meta })),
     [],
   );
 
   return (
     <div className="home-shell flex min-h-[100dvh] font-body text-content antialiased">
       <a
-        href="#planner-content"
+        href="#calendar-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-xl focus:bg-system focus:px-3 focus:py-2 focus:text-on-system"
       >
         Skip to content
@@ -300,11 +375,11 @@ export default function PlannerPage() {
           onClose={closeMobilePanel}
         />
         <main
-          id="planner-content"
+          id="calendar-content"
           className="home-main rounded-tl-2xl flex min-w-0 flex-1 flex-col"
         >
           <UtilityHeader
-            title="Planner"
+            title="Calendar"
             onOpenMenu={() => setMobilePanelOpen(true)}
             menuButtonRef={mobileMenuButtonRef}
             menuOpen={mobilePanelOpen}
@@ -357,7 +432,19 @@ export default function PlannerPage() {
           </UtilityHeader>
 
           <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 sm:p-6">
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by category">
+            {calendarEventsQuery.isLoading ? (
+              <p className="text-sm text-content-subtle">Loading calendar…</p>
+            ) : null}
+            {calendarEventsQuery.isError ? (
+              <p role="alert" className="text-sm text-danger">
+                Could not load calendar events.
+              </p>
+            ) : null}
+            <div
+              className="flex flex-wrap items-center gap-2"
+              role="group"
+              aria-label="Filter by category"
+            >
               {ALL_CATEGORIES.map((cat) => {
                 const active = visibleCategories.has(cat);
                 return (
@@ -379,9 +466,15 @@ export default function PlannerPage() {
                   </button>
                 );
               })}
-              <span className="ml-auto hidden items-center gap-3 text-[11px] text-content-subtle lg:flex" aria-label="Importance legend">
+              <span
+                className="ml-auto hidden items-center gap-3 text-[11px] text-content-subtle lg:flex"
+                aria-label="Importance legend"
+              >
                 {legend.map((item) => (
-                  <span key={item.key} className="inline-flex items-center gap-1.5">
+                  <span
+                    key={item.key}
+                    className="inline-flex items-center gap-1.5"
+                  >
                     <span
                       className="inline-block size-2 rounded-full"
                       style={{ backgroundColor: item.color }}
@@ -393,8 +486,11 @@ export default function PlannerPage() {
               </span>
             </div>
 
-            <div ref={calendarRootRef} className="planner-wrap home-control-surface min-h-0 flex-1 rounded-2xl border border-border-subtle p-3 sm:p-4">
-              <PlannerCalendar
+            <div
+              ref={calendarRootRef}
+              className="calendar-wrap home-control-surface min-h-0 flex-1 rounded-2xl border border-border-subtle p-3 sm:p-4"
+            >
+              <CalendarView
                 events={events}
                 visibleCategories={visibleCategories}
                 weekends={weekends}

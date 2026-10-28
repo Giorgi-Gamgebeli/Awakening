@@ -2,11 +2,11 @@ import type { EventInput } from "@fullcalendar/react";
 import {
   IMPORTANCE_META,
   type Category,
-  type PlannerEvent,
+  type CalendarEvent,
   type RecurrencePreset,
 } from "./types";
 
-const STORAGE_KEY = "planner.events.v1";
+const STORAGE_KEY = "calendar.events.v1";
 
 function uid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -15,7 +15,7 @@ function uid(): string {
   return `evt-${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
 }
 
-function seedEvents(): PlannerEvent[] {
+function seedEvents(): CalendarEvent[] {
   const now = new Date();
   const at = (dayOffset: number, h: number, m = 0) => {
     const d = new Date(now);
@@ -55,7 +55,7 @@ function seedEvents(): PlannerEvent[] {
     },
     {
       id: uid(),
-      title: "Plan the week",
+      title: "Review the week",
       start: iso(at(0, 9)),
       end: iso(plusMin(at(0, 9), 30)),
       allDay: false,
@@ -67,7 +67,7 @@ function seedEvents(): PlannerEvent[] {
   ];
 }
 
-export function loadEvents(): PlannerEvent[] {
+export function loadEvents(): CalendarEvent[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
@@ -75,14 +75,14 @@ export function loadEvents(): PlannerEvent[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
       return seed;
     }
-    const parsed = JSON.parse(raw) as PlannerEvent[];
+    const parsed = JSON.parse(raw) as CalendarEvent[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-export function saveEvents(events: PlannerEvent[]): void {
+export function saveEvents(events: CalendarEvent[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
   } catch {
@@ -129,7 +129,7 @@ function rruleFor(
 }
 
 export function toFullCalendarInput(
-  event: PlannerEvent,
+  event: CalendarEvent,
   visibleCategories?: Set<Category>,
 ): EventInput | null {
   if (visibleCategories && !visibleCategories.has(event.category)) return null;
@@ -147,7 +147,7 @@ export function toFullCalendarInput(
       category: event.category,
       notes: event.notes ?? "",
       recurrence: event.recurrence,
-      plannerId: event.id,
+      calendarId: event.id,
     },
   };
 
@@ -171,10 +171,10 @@ export function shiftIsoByDays(iso: string, days: number): string {
 
 /** Shift one event (single or whole recurring series) by N days. */
 export function shiftEventByDays(
-  events: PlannerEvent[],
+  events: CalendarEvent[],
   id: string,
   days: number,
-): PlannerEvent[] {
+): CalendarEvent[] {
   return events.map((e) =>
     e.id === id
       ? {
@@ -188,11 +188,11 @@ export function shiftEventByDays(
 
 /** Push all future events of a category by N days (recovery use-case). */
 export function shiftCategoryFutureByDays(
-  events: PlannerEvent[],
+  events: CalendarEvent[],
   category: Category,
   days: number,
   fromDate: Date = new Date(),
-): PlannerEvent[] {
+): CalendarEvent[] {
   const from = fromDate.getTime();
   return events.map((e) => {
     if (e.category !== category) return e;
@@ -209,10 +209,10 @@ export function shiftCategoryFutureByDays(
 
 /** Skip a single occurrence of a recurring series. */
 export function skipOccurrence(
-  events: PlannerEvent[],
+  events: CalendarEvent[],
   id: string,
   occurrenceStartIso: string,
-): PlannerEvent[] {
+): CalendarEvent[] {
   return events.map((e) =>
     e.id === id
       ? { ...e, exdates: [...(e.exdates ?? []), occurrenceStartIso] }

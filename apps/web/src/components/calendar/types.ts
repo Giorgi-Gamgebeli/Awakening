@@ -10,7 +10,7 @@ export type RecurrencePreset =
   | "every3weeks"
   | "weekdays";
 
-export interface PlannerEvent {
+export interface CalendarEvent {
   id: string;
   title: string;
   /** ISO string for one-off events (start). For recurring, dtstart. */

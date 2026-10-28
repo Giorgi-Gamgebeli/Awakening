@@ -30,6 +30,8 @@ model User {
   sessions         Session[]
   accounts         Account[]
   userApiKeys      UserApiKeys[]
+  agentSessions   AgentSession[]
+  calendarEvents   CalendarEvent[]
 }
 
 model UserSettings {
@@ -168,4 +170,87 @@ model UserApiKeys {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+enum AgentMessageRole {
+  USER
+  AGENT
+  SYSTEM
+}
+
+enum CalendarEventImportance {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum CalendarEventCategory {
+  GENERAL
+  WORKOUT
+  CLIMBING
+  WORK
+  PERSONAL
+}
+
+enum CalendarEventRecurrence {
+  NONE
+  DAILY
+  WEEKLY
+  EVERY_2_WEEKS
+  EVERY_3_WEEKS
+  WEEKDAYS
+}
+
+model AgentSession {
+  id            String             @id @unique @default(uuid())
+  userId        String
+  apiKeyId      Int?
+  title         String             @db.VarChar(120)
+  model         String?            @db.VarChar(120)
+  provider      UserApiKeysProvider?
+  isPinned      Boolean            @default(false)
+  lastMessageAt DateTime           @default(now())
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AgentMessage[]
+
+  @@index([userId, isPinned, lastMessageAt])
+}
+
+model AgentMessage {
+  id        String           @id @unique @default(uuid())
+  sessionId String
+  sequence  Int
+  role      AgentMessageRole
+  content   String           @db.Text
+  model     String?          @db.VarChar(120)
+  createdAt DateTime         @default(now())
+
+  session AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, sequence])
+  @@index([sessionId, sequence])
+}
+
+model CalendarEvent {
+  id             String                 @id @unique @default(uuid())
+  userId         String
+  title          String                 @db.VarChar(200)
+  startAt        DateTime
+  endAt          DateTime
+  allDay         Boolean                @default(false)
+  importance     CalendarEventImportance @default(NORMAL)
+  category       CalendarEventCategory   @default(GENERAL)
+  notes          String?                @db.Text
+  recurrence     CalendarEventRecurrence @default(NONE)
+  excludedStarts DateTime[]             @default([])
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startAt])
 }

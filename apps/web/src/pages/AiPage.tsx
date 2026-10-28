@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Send } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Send } from "lucide-react";
 import { ApiKeysProviderSchema } from "@repo/zod";
 import {
   ConversationPanel,
@@ -9,34 +9,52 @@ import {
   focusRing,
 } from "../components/home";
 import { MessageBubble } from "../components/home/MessageBubble";
-import type { Friend, Message } from "../components/home/types";
+import type { Message } from "../components/home/types";
 import { orpc } from "../lib/orpc";
 import "./HomePage.css";
 
-const aiFriend: Friend = {
+const aiFriend = {
   id: "ai-assistant",
   userName: "System",
   status: "ONLINE",
   initials: "SY",
   tone: "home-avatar",
-};
+} as const;
+
+type LocalMessage = Message & { pending?: boolean };
 
 export function AiPage() {
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const [prompt, setPrompt] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
+  const { sessionId } = useParams();
+  const navigate = useNavigate();
+  const activeSessionId = sessionId === "new" ? null : (sessionId ?? null);
+  const queryClient = useQueryClient();
+  const bottomRef = useRef<HTMLDivElement>(null);
+
   const apiKeysQuery = useQuery(orpc.apiKeys.findMany.queryOptions());
   const chatMutation = useMutation(orpc.agent.chat.mutationOptions());
+  const detailQuery = useQuery({
+    ...orpc.agent.sessions.messages.queryOptions({
+      input: {
+        id: activeSessionId ?? "00000000-0000-0000-0000-000000000000",
+        limit: 50,
+      },
+    }),
+    enabled: Boolean(activeSessionId),
+  });
+  const sessionsListKey = orpc.agent.sessions.list.queryKey({
+    input: { limit: 30 },
+  });
 
   useEffect(() => {
     document.title = "System | Awakening";
   }, []);
 
   const agentKeys = (apiKeysQuery.data ?? []).filter((apiKey) => {
-    return (
-      ApiKeysProviderSchema.safeParse(apiKey.provider).success
-    );
+    return ApiKeysProviderSchema.safeParse(apiKey.provider).success;
   });
   const selectedApiKey =
     agentKeys.find((apiKey) => apiKey.isActive) ?? agentKeys[0];
@@ -50,7 +68,27 @@ export function AiPage() {
   const { refetch: refetchModels } = modelsQuery;
   const storedModelId = selectedApiKey?.selectedModel ?? undefined;
   const selectedModel = models.find((model) => model.id === storedModelId);
+
+  const persistedMessages: LocalMessage[] = useMemo(() => {
+    if (!detailQuery.data) return [];
+    return detailQuery.data.items.map((m) => ({
+      id: m.id,
+      own: m.role === "USER",
+      text: m.content,
+    }));
+  }, [detailQuery.data]);
+
+  const messages = [...persistedMessages, ...localMessages];
   const canSend = Boolean(selectedApiKey && storedModelId && prompt.trim());
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, chatMutation.isPending]);
+
+  useEffect(() => {
+    setLocalMessages([]);
+    setPrompt("");
+  }, [activeSessionId]);
 
   function closeMobilePanel() {
     setMobilePanelOpen(false);
@@ -67,15 +105,22 @@ export function AiPage() {
     if (chatMutation.isError) void refetchModels();
   }, [chatMutation.isError, refetchModels]);
 
+  function handleNewChat() {
+    setLocalMessages([]);
+    setPrompt("");
+    navigate("/home/ai/new");
+  }
+
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const text = prompt.trim();
     if (!selectedApiKey || !storedModelId || !text) return;
 
-    setMessages((items) => [
+    const optimisticId = crypto.randomUUID();
+    setLocalMessages((items) => [
       ...items,
-      { id: crypto.randomUUID(), own: true, text },
+      { id: optimisticId, own: true, text, pending: true },
     ]);
     setPrompt("");
     chatMutation.mutate(
@@ -83,18 +128,22 @@ export function AiPage() {
         text,
         apiKeyId: selectedApiKey.id,
         model: storedModelId,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        ...(activeSessionId ? { sessionId: activeSessionId } : {}),
       },
       {
         onSuccess(response) {
-          setMessages((items) => [
-            ...items,
-            {
-              id: crypto.randomUUID(),
-              own: false,
-              text:
-                response.status === "success" ? response.text : response.message,
-            },
-          ]);
+          // Backend is source of truth: adopt canonical session id, then
+          // reconcile local state against persisted history.
+          navigate(`/home/ai/${response.sessionId}`, { replace: true });
+          setLocalMessages([]);
+          void queryClient.invalidateQueries({ queryKey: sessionsListKey });
+          void detailQuery.refetch();
+        },
+        onError() {
+          setLocalMessages((items) =>
+            items.filter((m) => m.id !== optimisticId),
+          );
         },
       },
     );
@@ -136,40 +185,58 @@ export function AiPage() {
           id="ai-content"
           className="home-main rounded-tl-2xl flex min-w-0 flex-1 flex-col"
         >
-            <UtilityHeader
-              title="System"
-              {...mobileNavigation}
-            />
+          <UtilityHeader title="System" {...mobileNavigation}>
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className={`grid size-11 place-items-center rounded-xl text-content-subtle transition-colors hover:bg-surface-raised hover:text-content ${focusRing}`}
+              aria-label="Start new chat"
+              title="New chat"
+            >
+              <Plus size={18} aria-hidden="true" />
+            </button>
+          </UtilityHeader>
 
-            {!selectedApiKey ? (
-              <section className="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-center text-sm text-content-muted sm:px-7">
-                <p>
-                  Add an API key to start chatting. {" "}
-                  <Link
-                    to="/home/settings"
-                    className={`font-semibold text-system underline-offset-2 hover:underline ${focusRing}`}
-                  >
-                    Go to Settings
-                  </Link>
-                </p>
-              </section>
-            ) : (
+          {!selectedApiKey ? (
+            <section className="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-center text-sm text-content-muted sm:px-7">
+              <p>
+                Add an API key to start chatting.{" "}
+                <Link
+                  to="/home/settings"
+                  className={`font-semibold text-system underline-offset-2 hover:underline ${focusRing}`}
+                >
+                  Go to Settings
+                </Link>
+              </p>
+            </section>
+          ) : (
+            <div className="flex min-h-0 flex-1">
               <section className="flex min-h-0 flex-1 flex-col">
                 <div
                   className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-6 sm:px-7"
                   aria-live="polite"
                 >
                   <div className="flex-1" />
-                  {messages.map((message) => (
-                    <MessageBubble
-                      key={message.id}
-                      message={message}
-                      friend={aiFriend}
-                    />
-                  ))}
+                  {activeSessionId && detailQuery.isLoading ? (
+                    <p className="text-center text-sm text-content-subtle">
+                      Loading conversation…
+                    </p>
+                  ) : (
+                    messages.map((message) => (
+                      <MessageBubble
+                        key={message.id}
+                        message={message}
+                        friend={aiFriend}
+                      />
+                    ))
+                  )}
                   {chatMutation.isPending ? (
                     <MessageBubble
-                      message={{ id: "thinking", own: false, text: "Thinking…" }}
+                      message={{
+                        id: "thinking",
+                        own: false,
+                        text: "Thinking…",
+                      }}
                       friend={aiFriend}
                     />
                   ) : null}
@@ -180,10 +247,13 @@ export function AiPage() {
                   ) : null}
                   {chatMutation.isError ? (
                     <p role="alert" className="text-sm text-danger">
-                      The system request failed. Check that this provider key can use
-                      the selected model.
+                      {chatMutation.error instanceof Error &&
+                      chatMutation.error.message
+                        ? chatMutation.error.message
+                        : "The system request failed. Check that this provider key can use the selected model."}
                     </p>
                   ) : null}
+                  <div ref={bottomRef} />
                 </div>
 
                 <form
@@ -202,7 +272,9 @@ export function AiPage() {
                       placeholder={
                         !storedModelId
                           ? "Select a model for this key in Settings first"
-                          : "Ask the system"
+                          : activeSessionId
+                            ? "Reply in this chat"
+                            : "Ask the system — a new chat will be created"
                       }
                       className="min-w-0 flex-1 rounded-xl border border-border bg-surface-raised px-4 py-3 text-sm text-content placeholder:text-content-subtle disabled:cursor-not-allowed disabled:opacity-70"
                     />
@@ -223,7 +295,8 @@ export function AiPage() {
                   </div>
                 </form>
               </section>
-            )}
+            </div>
+          )}
         </main>
       </div>
     </div>

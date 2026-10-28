@@ -18,10 +18,10 @@ import interactionPlugin from "@fullcalendar/react/interaction";
 import rrulePlugin from "@fullcalendar/rrule";
 import { IMPORTANCE_META } from "./types";
 import { toFullCalendarInput } from "./store";
-import type { Category, PlannerEvent } from "./types";
+import type { Category, CalendarEvent } from "./types";
 
-interface PlannerCalendarProps {
-  events: PlannerEvent[];
+interface CalendarViewProps {
+  events: CalendarEvent[];
   visibleCategories: Set<Category>;
   weekends: boolean;
   onSelect: (arg: DateSelectInfo) => void;
@@ -38,19 +38,19 @@ function renderEventContent(arg: EventDisplayInfo) {
     "normal";
   const meta = IMPORTANCE_META[importance] ?? IMPORTANCE_META.normal;
   return (
-    <span className="fc-planner-event" data-planner-id={arg.event.id}>
+    <span className="fc-calendar-event" data-calendar-id={arg.event.id}>
       <span
-        className="fc-planner-dot"
+        className="fc-calendar-dot"
         style={{ backgroundColor: meta.color }}
         aria-hidden="true"
       />
-      <span className="fc-planner-time">{arg.timeText}</span>
-      <span className="fc-planner-title">{arg.event.title}</span>
+      <span className="fc-calendar-time">{arg.timeText}</span>
+      <span className="fc-calendar-title">{arg.event.title}</span>
     </span>
   );
 }
 
-export function PlannerCalendar({
+export function CalendarView({
   events,
   visibleCategories,
   weekends,
@@ -60,7 +60,7 @@ export function PlannerCalendar({
   onResize,
   onDragStart,
   onResizeStart,
-}: PlannerCalendarProps) {
+}: CalendarViewProps) {
   const fcEvents: EventInput[] = useMemo(
     () =>
       events

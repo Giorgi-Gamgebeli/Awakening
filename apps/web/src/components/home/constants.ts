@@ -26,7 +26,7 @@ export const friends: Friend[] = [
 
 export const groups: Group[] = [
   { id: "design", name: "Design Room", members: 4 },
-  { id: "weekend", name: "Weekend plans", members: 3 },
+  { id: "weekend", name: "Weekend crew", members: 3 },
 ];
 
 export const statusLabel: Record<"ONLINE" | "IDLE" | "OFFLINE", string> = {

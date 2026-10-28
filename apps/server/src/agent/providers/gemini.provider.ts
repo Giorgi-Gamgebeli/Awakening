@@ -1,9 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { generateText } from 'ai';
+import { generateText, type ToolSet } from 'ai';
 import { z } from '@repo/zod';
 import {
+  logAgentStep,
+  stopCalendarAgentLoop,
   toAgentChatResult,
+  toToolResultText,
   type AgentModel,
   type AgentProvider,
 } from './agent-provider';
@@ -23,6 +26,7 @@ const geminiModelsResponseSchema = z.object({
 @Injectable()
 export class GeminiProvider implements AgentProvider {
   readonly name = 'GEMINI' as const;
+  private readonly logger = new Logger(GeminiProvider.name);
 
   async listModels(apiKey: string): Promise<AgentModel[]> {
     const response = await fetch(
@@ -55,16 +59,24 @@ export class GeminiProvider implements AgentProvider {
     text,
     model,
     reasoningEffort,
+    system,
+    tools,
   }: {
     apiKey: string;
     text: string;
     model: string;
     reasoningEffort: 'low' | 'medium' | 'high' | null;
+    system?: string;
+    tools?: ToolSet;
   }) {
     const google = createGoogleGenerativeAI({ apiKey });
     const result = await generateText({
       model: google(model),
       prompt: text,
+      maxRetries: tools ? 0 : 2,
+      onStepFinish: (step) => logAgentStep(this.logger, this.name, step),
+      ...(system ? { system } : {}),
+      ...(tools ? { tools, stopWhen: stopCalendarAgentLoop } : {}),
       ...(reasoningEffort
         ? {
             providerOptions: {
@@ -74,6 +86,10 @@ export class GeminiProvider implements AgentProvider {
         : {}),
     });
 
-    return toAgentChatResult(result.text, result.finishReason);
+    return toAgentChatResult(
+      result.text,
+      result.finishReason,
+      toToolResultText(result.steps.at(-1)?.toolResults ?? []),
+    );
   }
 }
